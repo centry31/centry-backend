@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id String @id @default(uuid())
+
+  tgId   BigInt  @unique // Telegram user id
+  chatId BigInt? // для личных уведомлений от бота
+
+  username    String? // @username (может быть null)
+  displayName String
+
+  // timeZone String @default("Europe/Moscow")
+
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  MagicLink MagicLink[]
+
+  @@map("users")
+}
+
+model MagicLink {
+  id        String    @id @default(uuid())
+  hashCode  String
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@map("magic_links")
+}
