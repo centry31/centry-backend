@@ -1,6 +1,6 @@
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import * as cookieParser from 'cookie-parser';
 
 const start = async () => {
@@ -11,15 +11,21 @@ const start = async () => {
 	app.use(cookieParser());
 	app.setGlobalPrefix('api');
 	app.enableCors({
-		origin: CLIENT_URL,
+		// TODO: remove
+		origin: [CLIENT_URL, 'https://34a19d1d7016.ngrok-free.app'],
 		credentials: true,
 	});
 
-	// app.useGlobalPipes(
-	// 	new ValidationPipe({
-	// 		transform: true, // Преобразует данные к типу, указанному в DTO
-	// 	}),
+	// явно ничего не отдаем, кроме Expose()
+	// app.useGlobalInterceptors(
+	// 	new ClassSerializerInterceptor(app.get(Reflector), { strategy: 'excludeAll' }),
 	// );
+
+	app.useGlobalPipes(
+		new ValidationPipe({
+			transform: true, // Преобразует данные к типу, указанному в DTO
+		}),
+	);
 
 	await app.listen(PORT, () => console.log('Server is running on PORT ' + PORT));
 };

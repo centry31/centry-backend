@@ -1,6 +1,6 @@
 // TODO: add validation
 export class CreateUserDto {
-	tgId: number;
+	tgId: bigint;
 	chatId?: number | null;
 
 	username?: string | null;

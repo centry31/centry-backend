@@ -4,6 +4,7 @@ import { AuthService } from './auth.service';
 import { PrismaService } from 'prisma.service';
 import { MagicLinksModule } from 'magic-links/magic-links.module';
 import { JwtModule } from '@nestjs/jwt';
+import { UsersModule } from 'users/users.module';
 
 @Module({
 	controllers: [AuthController],
@@ -17,6 +18,8 @@ import { JwtModule } from '@nestjs/jwt';
 				expiresIn: '24h',
 			},
 		}),
+		UsersModule,
 	],
+	exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

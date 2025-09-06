@@ -13,16 +13,43 @@ model User {
   tgId   BigInt  @unique // Telegram user id
   chatId BigInt? // для личных уведомлений от бота
 
-  username    String? // @username (может быть null)
+  username    String? @unique // @username (может быть null)
   displayName String
 
   // timeZone String @default("Europe/Moscow")
 
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  MagicLink MagicLink[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  MagicLink   MagicLink[]
+  SpaceMember SpaceMember[]
+  Event       Event[]
+  Space       Space[]       @relation("SpaceOwner")
 
   @@map("users")
+}
+
+model Space {
+  id          String        @id @default(uuid())
+  name        String
+  description String?
+  owner       User          @relation("SpaceOwner", fields: [ownerID], references: [id])
+  ownerID     String
+  SpaceMember SpaceMember[]
+
+  event Event[]
+
+  @@map("spaces")
+}
+
+// промежуточная таблица для many to many
+model SpaceMember {
+  user    User   @relation(fields: [userId], references: [id])
+  userId  String
+  space   Space  @relation(fields: [spaceId], references: [id])
+  spaceId String
+
+  @@id([userId, spaceId])
+  @@map("space_members")
 }
 
 model MagicLink {
@@ -35,4 +62,35 @@ model MagicLink {
   createdAt DateTime  @default(now())
 
   @@map("magic_links")
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  start       DateTime
+  end         DateTime
+  isAllDay    Boolean  @default(false)
+
+  type     EventType
+  location String?
+
+  spaceId String
+  space   Space  @relation(fields: [spaceId], references: [id])
+
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("events")
+}
+
+enum EventType {
+  LECTURE
+  LAB
+  CONTROL
+  DEADLINE
+  OTHER
 }

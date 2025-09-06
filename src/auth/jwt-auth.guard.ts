@@ -26,6 +26,9 @@ export class JwtAuthGuard implements CanActivate {
 			/** Кладу информацию для работы с endpoints в поле user */
 			req.user = decodedToken;
 
+			const currentSpaceId = req.cookies['currentSpaceId'];
+			req.currentSpaceId = currentSpaceId;
+
 			return true;
 		} catch (e) {
 			console.error(e);

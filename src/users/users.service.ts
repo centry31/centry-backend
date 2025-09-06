@@ -19,6 +19,14 @@ export class UsersService {
 		});
 	}
 
+	async findUserById(id: string) {
+		return this.prismaService.user.findFirst({ where: { id } });
+	}
+
+	async findUserByTelegramId(tgId: bigint) {
+		return this.prismaService.user.findFirst({ where: { tgId } });
+	}
+
 	async registration(createUserDto: CreateUserDto) {
 		const userCandidate = await this.prismaService.user.findFirst({
 			where: { tgId: createUserDto.tgId },
@@ -32,5 +40,13 @@ export class UsersService {
 		}
 
 		return this.createUser(createUserDto);
+	}
+
+	async getUserSpacesIDs(id: string) {
+		const spaces = await this.prismaService.space.findMany({
+			where: { OR: [{ ownerID: id }, { SpaceMember: { some: { userId: id } } }] },
+		});
+
+		return spaces.map((space) => space.id);
 	}
 }
