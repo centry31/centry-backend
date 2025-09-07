@@ -13,7 +13,16 @@ export class SpacesService {
 		const { name, description } = createSpaceDto;
 
 		return this.prismaService.space.create({
-			data: { name, description, owner: { connect: { id: userId } } },
+			data: {
+				name,
+				description,
+				owner: { connect: { id: userId } },
+				SpaceMember: {
+					create: {
+						user: { connect: { id: userId } },
+					},
+				},
+			},
 		});
 	}
 
