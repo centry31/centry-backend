@@ -1,5 +1,4 @@
 import { Expose, Type } from 'class-transformer';
-import type { EventType } from '@prisma/client';
 
 class CreatedByMiniDto {
 	@Expose() id: string;
@@ -18,8 +17,8 @@ export class EventDto {
 	@Expose() start: string;
 	@Expose() end: string;
 	@Expose() isAllDay: boolean;
-	@Expose() type: EventType;
 	@Expose() location?: string;
+	@Expose() description?: string;
 
 	// опциональные связи — только публичные поля
 	@Expose() @Type(() => CreatedByMiniDto) createdBy?: CreatedByMiniDto;

@@ -72,7 +72,6 @@ model Event {
   end         DateTime
   isAllDay    Boolean  @default(false)
 
-  type     EventType
   location String?
 
   spaceId String
@@ -85,12 +84,4 @@ model Event {
   updatedAt DateTime @updatedAt
 
   @@map("events")
-}
-
-enum EventType {
-  LECTURE
-  LAB
-  CONTROL
-  DEADLINE
-  OTHER
 }

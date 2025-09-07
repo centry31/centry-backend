@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, Post, Put, Request, UseGuards } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Delete,
+	Get,
+	Param,
+	Patch,
+	Post,
+	Request,
+	UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from 'auth/jwt-auth.guard';
 import { SpaceAccessGuard } from 'spaces/space-access.guard';
 import { CreateEventDto } from './dto/create-event-dto';
@@ -42,10 +52,34 @@ export class EventsController {
 		return formatResponse(validatedEvent, 'Событие успешно создано');
 	}
 
-	@Put(':id')
+	@Patch(':id')
 	async updateEvent(
 		@Body() createEventDto: CreateEventDto,
 		@Request() req: AuthenticatedRequest,
 		@Param('id') id: string,
-	) {}
+	) {
+		const { user, currentSpaceId } = req;
+
+		const updatedEvent = await this.eventsService.updateEvent(
+			createEventDto,
+			id,
+			user.id,
+			currentSpaceId,
+		);
+		const validatedEvent = plainToInstance(EventDto, updatedEvent, {
+			excludeExtraneousValues: true,
+		});
+		return formatResponse(validatedEvent, 'Событие успешно обновлено');
+	}
+
+	@Delete(':id')
+	async deleteEvent(@Request() req: AuthenticatedRequest, @Param('id') id: string) {
+		const { user, currentSpaceId } = req;
+
+		const deletedEvent = await this.eventsService.deleteEvent(id, user.id, currentSpaceId);
+		const validatedEvent = plainToInstance(EventDto, deletedEvent, {
+			excludeExtraneousValues: true,
+		});
+		return formatResponse(validatedEvent, 'Событие успешно обновлено');
+	}
 }

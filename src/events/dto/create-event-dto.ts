@@ -1,5 +1,4 @@
-import { IsString, IsOptional, IsDateString, IsBoolean, IsEnum } from 'class-validator';
-import { EventType } from '@prisma/client';
+import { IsString, IsOptional, IsDateString, IsBoolean } from 'class-validator';
 
 export class CreateEventDto {
 	@IsString()
@@ -18,10 +17,4 @@ export class CreateEventDto {
 	@IsOptional()
 	@IsBoolean()
 	isAllDay?: boolean;
-
-	@IsEnum(EventType)
-	type: EventType;
-
-	@IsString()
-	spaceId: string;
 }
