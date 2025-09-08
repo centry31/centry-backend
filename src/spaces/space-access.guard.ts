@@ -10,12 +10,21 @@ export class SpaceAccessGuard implements CanActivate {
 	async canActivate(context: ExecutionContext): Promise<boolean> {
 		const request: AuthenticatedRequest = context.switchToHttp().getRequest();
 
-		const currentSpaceId = request.currentSpaceId;
 		const userId = request.user.id;
+
+		// достаём spaceId из разных мест
+		const spaceIdFromCookie = request.currentSpaceId;
+		const spaceIdFromParams = request.params?.spaceId;
+
+		const targetSpaceId = spaceIdFromParams || spaceIdFromCookie;
+
+		if (!targetSpaceId) {
+			throw new ForbiddenException('Не указан spaceId');
+		}
 
 		const userSpacesIDs = await this.userService.getUserSpacesIDs(userId);
 
-		if (!userSpacesIDs.includes(currentSpaceId)) {
+		if (!userSpacesIDs.includes(targetSpaceId)) {
 			throw new ForbiddenException('Вы не имеете доступа к этому пространству');
 		}
 
