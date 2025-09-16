@@ -17,6 +17,7 @@ import { EventsService } from './events.service';
 import { formatResponse } from 'common/utils/response.util';
 import { EventDto } from './dto/event.dto';
 import { plainToInstance } from 'class-transformer';
+import { UpdateEventDto } from './dto/update-event.dto';
 
 @Controller('events')
 @UseGuards(JwtAuthGuard, SpaceAccessGuard)
@@ -41,7 +42,7 @@ export class EventsController {
 	) {
 		const { user, currentSpaceId } = req;
 
-		const createdEvent = await this.eventsService.createEvents(
+		const createdEvent = await this.eventsService.createEvent(
 			createEventDto,
 			user.id,
 			currentSpaceId,
@@ -54,14 +55,14 @@ export class EventsController {
 
 	@Patch(':id')
 	async updateEvent(
-		@Body() createEventDto: CreateEventDto,
+		@Body() updateEventDto: UpdateEventDto,
 		@Request() req: AuthenticatedRequest,
 		@Param('id') id: string,
 	) {
 		const { user, currentSpaceId } = req;
 
 		const updatedEvent = await this.eventsService.updateEvent(
-			createEventDto,
+			updateEventDto,
 			id,
 			user.id,
 			currentSpaceId,

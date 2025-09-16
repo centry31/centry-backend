@@ -2,16 +2,25 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from 'prisma.service';
 import { CreateEventDto } from './dto/create-event-dto';
 import { UpdateEventDto } from 'events/dto/update-event.dto';
+import { EventRemindersService } from 'event-reminders/event-reminders.service';
+import { SpacesService } from 'spaces/spaces.service';
 
 @Injectable()
 export class EventsService {
-	constructor(private readonly prismaService: PrismaService) {}
+	constructor(
+		private readonly prismaService: PrismaService,
+		private readonly eventRemindersService: EventRemindersService,
+		private readonly spacesService: SpacesService,
+	) {}
 
 	/**
 	 * Получает все события, которые привязаны к конкретному пространству
 	 * */
 	async getEvents(spaceId: string) {
-		return this.prismaService.event.findMany({ where: { spaceId } });
+		return this.prismaService.event.findMany({
+			where: { spaceId },
+			include: { reminders: true },
+		});
 	}
 
 	/**
@@ -19,12 +28,10 @@ export class EventsService {
 	 *
 	 * @todo нужно добавить роли для создания, пока что создавать может только владалец пространства
 	 * */
-	async createEvents(createEventDto: CreateEventDto, userId: string, spaceId: string) {
-		const { title, description, start, end, isAllDay } = createEventDto;
+	async createEvent(createEventDto: CreateEventDto, userId: string, spaceId: string) {
+		const { title, description, start, end, isAllDay, reminders } = createEventDto;
 
-		const currentSpace = await this.prismaService.space.findFirst({
-			where: { id: spaceId },
-		});
+		const currentSpace = await this.spacesService.getSpace(spaceId);
 
 		// TODO: temp! added user roles for spaces (editor)
 		if (currentSpace.ownerID !== userId) {
@@ -46,6 +53,14 @@ export class EventsService {
 				createdBy: { connect: { id: userId } },
 			},
 		});
+
+		if (currentSpace.hasActiveTgChats) {
+			/** Создаем все напоминания */
+			for (const reminder of reminders) {
+				await this.eventRemindersService.createByEventId(reminder, createdEvent.id);
+			}
+		}
+
 		return createdEvent;
 	}
 
@@ -60,11 +75,9 @@ export class EventsService {
 		userId: string,
 		spaceId: string,
 	) {
-		const { title, description, start, end, isAllDay } = updateEventDto;
+		const { title, description, start, end, isAllDay, reminders } = updateEventDto;
 
-		const currentSpace = await this.prismaService.space.findFirst({
-			where: { id: spaceId },
-		});
+		const currentSpace = await this.spacesService.getSpace(spaceId);
 
 		// TODO: temp! added user roles for spaces (editor)
 		if (currentSpace.ownerID !== userId) {
@@ -82,8 +95,18 @@ export class EventsService {
 				start,
 				end,
 				isAllDay,
+				reminders: { deleteMany: {} },
 			},
 		});
+
+		if (currentSpace.hasActiveTgChats) {
+			/** Очищаем все существующие напоминания и планируем заново */
+			await this.eventRemindersService.cancelAllByEventId(eventId);
+			for (const reminder of reminders) {
+				await this.eventRemindersService.createByEventId(reminder, eventId);
+			}
+		}
+
 		return updatedEvent;
 	}
 

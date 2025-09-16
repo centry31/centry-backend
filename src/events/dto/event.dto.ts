@@ -1,4 +1,5 @@
 import { Expose, Type } from 'class-transformer';
+import { EventReminderDto } from 'event-reminders/dto/event-reminder.dto';
 
 class CreatedByMiniDto {
 	@Expose() id: string;
@@ -23,4 +24,5 @@ export class EventDto {
 	// опциональные связи — только публичные поля
 	@Expose() @Type(() => CreatedByMiniDto) createdBy?: CreatedByMiniDto;
 	@Expose() @Type(() => SpaceMiniDto) space?: SpaceMiniDto;
+	@Expose() @Type(() => EventReminderDto) reminders?: EventReminderDto[];
 }

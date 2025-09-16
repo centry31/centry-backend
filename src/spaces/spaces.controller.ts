@@ -1,14 +1,5 @@
-import {
-	Body,
-	Controller,
-	Delete,
-	Get,
-	Param,
-	Patch,
-	Post,
-	Request,
-	UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param } from '@nestjs/common';
+import { Patch, Post, Request, UseGuards } from '@nestjs/common';
 import { SpacesService } from './spaces.service';
 import { AuthenticatedRequest } from 'auth/types/authenticated-request.interface';
 import { plainToInstance } from 'class-transformer';

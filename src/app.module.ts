@@ -7,6 +7,9 @@ import { MagicLinksModule } from 'magic-links/magic-links.module';
 import { AuthModule } from 'auth/auth.module';
 import { EventsModule } from 'events/events.module';
 import { SpacesModule } from 'spaces/spaces.module';
+import { EventRemindersModule } from 'event-reminders/event-reminders.module';
+import { BullModule } from '@nestjs/bullmq';
+import { TgLinkCodesModule } from 'tg-link-codes/tg-link-codes.module';
 
 @Module({
 	controllers: [],
@@ -15,12 +18,20 @@ import { SpacesModule } from 'spaces/spaces.module';
 		ConfigModule.forRoot({
 			envFilePath: '.env',
 		}),
+		BullModule.forRoot({
+			connection: {
+				host: process.env.REDIS_HOST || 'localhost',
+				port: +process.env.REDIS_PORT || 6379,
+			},
+		}),
 		BotModule,
 		UsersModule,
 		MagicLinksModule,
 		AuthModule,
 		EventsModule,
 		SpacesModule,
+		EventRemindersModule,
+		TgLinkCodesModule,
 	],
 })
 export class AppModule {}

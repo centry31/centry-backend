@@ -18,12 +18,13 @@ model User {
 
   // timeZone String @default("Europe/Moscow")
 
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  MagicLink   MagicLink[]
-  SpaceMember SpaceMember[]
-  Event       Event[]
-  Space       Space[]       @relation("SpaceOwner")
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  MagicLink     MagicLink[]
+  SpaceMember   SpaceMember[]
+  Event         Event[]
+  Space         Space[]         @relation("SpaceOwner")
+  SpaceLinkCode SpaceLinkCode[]
 
   @@map("users")
 }
@@ -36,7 +37,9 @@ model Space {
   ownerID     String
   SpaceMember SpaceMember[]
 
-  event Event[]
+  event         Event[]
+  SpaceTgChat   SpaceTgChat[]
+  SpaceLinkCode SpaceLinkCode[]
 
   @@map("spaces")
 }
@@ -52,6 +55,60 @@ model SpaceMember {
   @@map("space_members")
 }
 
+enum TgChatType {
+  private
+  group
+  supergroup
+  channel
+}
+
+model SpaceTgChat {
+  id String @id @default(uuid())
+
+  spaceId String
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  chatTgId  BigInt
+  chatType  TgChatType
+  chatTitle String?
+
+  // 0 = весь чат (без темы). Никогда не null → безопасный upsert
+  messageThreadId Int @default(0)
+
+  initiatedByTgId BigInt
+  isActive        Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([spaceId, chatTgId, messageThreadId])
+  @@index([chatTgId])
+  @@map("space_tg_chats")
+}
+
+model SpaceLinkCode {
+  id      String @id @default(uuid())
+  spaceId String
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  hashCode String @unique
+
+  createdByUserId String
+  createdBy       User   @relation(fields: [createdByUserId], references: [id])
+
+  expiresAt DateTime
+  usedAt    DateTime?
+  maxUses   Int       @default(1)
+  usedCount Int       @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([spaceId])
+  @@index([expiresAt])
+  @@index([createdByUserId])
+  @@map("space_link_codes")
+}
+
 model MagicLink {
   id        String    @id @default(uuid())
   hashCode  String
@@ -62,6 +119,28 @@ model MagicLink {
   createdAt DateTime  @default(now())
 
   @@map("magic_links")
+}
+
+model EventReminder {
+  id      String @id @default(uuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // относительное напоминание
+  offsetMinutes Int // >= 0, "за сколько минут до start"
+
+  // кому и куда шлём
+  // userId String? // null = всем участникам; иначе персонально
+
+  scheduledAt DateTime? // можно преформировать абсолютное время
+  sentAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([eventId])
+  @@index([scheduledAt])
+  @@map("event_reminders")
 }
 
 model Event {
@@ -82,6 +161,8 @@ model Event {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  reminders EventReminder[]
 
   @@map("events")
 }

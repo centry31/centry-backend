@@ -15,8 +15,9 @@ export class SpaceAccessGuard implements CanActivate {
 		// достаём spaceId из разных мест
 		const spaceIdFromCookie = request.currentSpaceId;
 		const spaceIdFromParams = request.params?.spaceId;
+		const spaceIdFromBody = request.body?.spaceId;
 
-		const targetSpaceId = spaceIdFromParams || spaceIdFromCookie;
+		const targetSpaceId = spaceIdFromBody || spaceIdFromParams || spaceIdFromCookie;
 
 		if (!targetSpaceId) {
 			throw new ForbiddenException('Не указан spaceId');

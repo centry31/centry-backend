@@ -10,6 +10,7 @@ export class SpaceDto {
 	@Expose() id: string;
 	@Expose() name: string;
 	@Expose() description?: string;
+	@Expose() hasActiveTgChats: boolean;
 
 	@Expose() @Type(() => OwnerMiniDto) createdBy?: OwnerMiniDto;
 }

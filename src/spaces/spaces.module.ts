@@ -8,5 +8,6 @@ import { AuthModule } from 'auth/auth.module';
 	controllers: [SpacesController],
 	providers: [SpacesService, PrismaService],
 	imports: [AuthModule],
+	exports: [SpacesService],
 })
 export class SpacesModule {}
