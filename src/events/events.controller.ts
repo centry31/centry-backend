@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch } from '@nestjs/common';
 import { Post, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'auth/jwt-auth.guard';
-import { SpaceAccessGuard } from 'spaces/space-access.guard';
+import { SpaceMemberAccessGuard } from 'spaces/space-member-access.guard';
 import { CreateEventDto } from './dto/create-event-dto';
 import { AuthenticatedRequest } from 'auth/types/authenticated-request.interface';
 import { EventsService } from './events.service';
@@ -12,7 +12,7 @@ import { UpdateEventDto } from './dto/update-event.dto';
 import { SpaceOwnerAccessGuard } from 'spaces/space-owner-access.guard';
 
 @Controller('events')
-@UseGuards(JwtAuthGuard, SpaceAccessGuard)
+@UseGuards(JwtAuthGuard, SpaceMemberAccessGuard)
 export class EventsController {
 	constructor(private readonly eventsService: EventsService) {}
 

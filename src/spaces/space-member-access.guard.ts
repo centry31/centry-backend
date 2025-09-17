@@ -4,7 +4,7 @@ import { UsersService } from 'users/users.service';
 
 /** Проверяет, что пользователь имеет доступ к пространству, в который посылается запрос */
 @Injectable()
-export class SpaceAccessGuard implements CanActivate {
+export class SpaceMemberAccessGuard implements CanActivate {
 	constructor(private userService: UsersService) {}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {

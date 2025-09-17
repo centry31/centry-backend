@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'prisma.service';
 import { CreateEventDto } from './dto/create-event-dto';
 import { UpdateEventDto } from 'events/dto/update-event.dto';
@@ -63,7 +63,7 @@ export class EventsService {
 	async updateEvent(updateEventDto: UpdateEventDto, eventId: string, spaceId: string) {
 		const { title, description, start, end, isAllDay, reminders } = updateEventDto;
 
-		const updatedEvent = await this.prismaService.event.update({
+		await this.prismaService.event.update({
 			where: { id: eventId, spaceId },
 			data: {
 				title,
@@ -84,7 +84,10 @@ export class EventsService {
 			}
 		}
 
-		return updatedEvent;
+		return this.prismaService.event.findUnique({
+			where: { id: eventId },
+			include: { reminders: true },
+		});
 	}
 
 	/**
