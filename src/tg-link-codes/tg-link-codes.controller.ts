@@ -4,10 +4,10 @@ import { AuthenticatedRequest } from 'auth/types/authenticated-request.interface
 import { formatResponse } from 'common/utils/response.util';
 import { TgLinkCodesService } from './tg-link-codes.service';
 import { JwtAuthGuard } from 'auth/jwt-auth.guard';
-import { SpaceAccessGuard } from 'spaces/space-access.guard';
+import { SpaceOwnerAccessGuard } from 'spaces/space-owner-access.guard';
 
 @Controller('tg-link-codes')
-@UseGuards(JwtAuthGuard, SpaceAccessGuard)
+@UseGuards(JwtAuthGuard, SpaceOwnerAccessGuard)
 export class TgLinkCodesController {
 	constructor(private readonly tgLinkCodesService: TgLinkCodesService) {}
 
@@ -20,11 +20,7 @@ export class TgLinkCodesController {
 		// TODO: use spaceId from req? (require set currentSpaceId on space details page)
 		const { spaceId } = createLinkCodeDto;
 
-		const linkCode = await this.tgLinkCodesService.createLinkCodeForTgChat({
-			spaceId,
-			createdByUserId: user.id,
-		});
-
+		const linkCode = await this.tgLinkCodesService.createLinkCode(createLinkCodeDto, user.id);
 		return formatResponse(linkCode, 'Код для привязки группы и пространства успешно создан');
 	}
 }

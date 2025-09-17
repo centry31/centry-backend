@@ -9,6 +9,7 @@ import { SpaceDto } from './dto/space.dto';
 import { JwtAuthGuard } from 'auth/jwt-auth.guard';
 import { UserDto } from 'users/dto/user.dto';
 import { UpdateSpaceDto } from 'spaces/dto/update-space-dto';
+import { SpaceOwnerAccessGuard } from './space-owner-access.guard';
 
 @Controller('spaces')
 @UseGuards(JwtAuthGuard)
@@ -59,18 +60,13 @@ export class SpacesController {
 	}
 
 	@Patch(':spaceId')
+	@UseGuards(SpaceOwnerAccessGuard)
 	async updateSpaceInfo(
 		@Body() updateSpaceDto: UpdateSpaceDto,
 		@Request() req: AuthenticatedRequest,
 		@Param('spaceId') spaceId: string,
 	) {
-		const { user } = req;
-
-		const updatedSpace = await this.spacesService.updateSpaceInfo(
-			updateSpaceDto,
-			spaceId,
-			user.id,
-		);
+		const updatedSpace = await this.spacesService.updateSpaceInfo(updateSpaceDto, spaceId);
 		const validatedUpdatedSpace = plainToInstance(SpaceDto, updatedSpace, {
 			excludeExtraneousValues: true,
 		});
@@ -78,10 +74,9 @@ export class SpacesController {
 	}
 
 	@Delete(':spaceId')
-	async deleteSpace(@Request() req: AuthenticatedRequest, @Param('spaceId') spaceId: string) {
-		const { user } = req;
-
-		const deletedSpace = await this.spacesService.deleteSpace(spaceId, user.id);
+	@UseGuards(SpaceOwnerAccessGuard)
+	async deleteSpace(@Param('spaceId') spaceId: string) {
+		const deletedSpace = await this.spacesService.deleteSpace(spaceId);
 		const validatedDeletedSpace = plainToInstance(SpaceDto, deletedSpace, {
 			excludeExtraneousValues: true,
 		});

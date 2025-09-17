@@ -11,8 +11,8 @@ export class TgLinkCodesService {
 	constructor(private prisma: PrismaService) {}
 
 	/** Создаём одноразовый/многоразовый код */
-	async createLinkCode(dto: CreateLinkCodeDto) {
-		const { spaceId, createdByUserId } = dto;
+	async createLinkCode(dto: CreateLinkCodeDto, createdByUserId: string) {
+		const { spaceId } = dto;
 
 		const raw = randomBytes(16).toString('hex');
 		const hashCode = await bcrypt.hash(raw, 10);
@@ -32,6 +32,7 @@ export class TgLinkCodesService {
 		if (!code || !code.includes('.')) {
 			throw new HttpException('Некорректный формат кода', HttpStatus.BAD_REQUEST);
 		}
+
 		const [id, secret] = code.split('.', 2);
 		if (!id || !secret) {
 			throw new HttpException('Некорректный формат кода', HttpStatus.BAD_REQUEST);
@@ -40,9 +41,11 @@ export class TgLinkCodesService {
 		const link = await this.prisma.spaceLinkCode.findUnique({ where: { id } });
 		if (!link) throw new HttpException('Код не найден', HttpStatus.NOT_FOUND);
 		if (link.usedAt) throw new HttpException('Код уже использован', HttpStatus.GONE);
+
 		if (link.expiresAt < new Date()) throw new HttpException('Код устарел', HttpStatus.GONE);
-		if (link.usedCount >= link.maxUses)
+		if (link.usedCount >= link.maxUses) {
 			throw new HttpException('Лимит исчерпан', HttpStatus.GONE);
+		}
 
 		const ok = await bcrypt.compare(secret, link.hashCode);
 		if (!ok) throw new HttpException('Код не найден', HttpStatus.NOT_FOUND);
@@ -63,19 +66,6 @@ export class TgLinkCodesService {
 				data: { usedAt: new Date() },
 			});
 		}
-	}
-
-	/** Обёртка с проверкой прав владельца */
-	async createLinkCodeForTgChat(dto: CreateLinkCodeDto) {
-		const { spaceId, createdByUserId } = dto;
-
-		const space = await this.prisma.space.findUnique({ where: { id: spaceId } });
-		if (!space)
-			throw new HttpException('Такого пространства не существует', HttpStatus.NOT_FOUND);
-		if (space.ownerID !== createdByUserId) {
-			throw new HttpException('У вас нет прав для создания', HttpStatus.FORBIDDEN);
-		}
-		return this.createLinkCode(dto);
 	}
 
 	/** Привязка чат/топик к пространству кодом */

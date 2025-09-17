@@ -83,16 +83,7 @@ export class SpacesService {
 		};
 	}
 
-	async updateSpaceInfo(updateSpaceDto: UpdateSpaceDto, spaceId: string, userId: string) {
-		const space = await this.prismaService.space.findFirst({ where: { id: spaceId } });
-
-		if (space.ownerID != userId) {
-			throw new HttpException(
-				'У вас нет прав редактировать данное пространство',
-				HttpStatus.FORBIDDEN,
-			);
-		}
-
+	async updateSpaceInfo(updateSpaceDto: UpdateSpaceDto, spaceId: string) {
 		return this.prismaService.space.update({
 			where: { id: spaceId },
 			data: {
@@ -102,16 +93,7 @@ export class SpacesService {
 		});
 	}
 
-	async deleteSpace(spaceId: string, userId: string) {
-		const space = await this.prismaService.space.findFirst({ where: { id: spaceId } });
-
-		if (space.ownerID != userId) {
-			throw new HttpException(
-				'У вас нет прав редактировать данное пространство',
-				HttpStatus.FORBIDDEN,
-			);
-		}
-
+	async deleteSpace(spaceId: string) {
 		return this.prismaService.space.delete({ where: { id: spaceId } });
 	}
 }
