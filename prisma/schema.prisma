@@ -25,6 +25,7 @@ model User {
   Event         Event[]
   Space         Space[]         @relation("SpaceOwner")
   SpaceLinkCode SpaceLinkCode[]
+  SpaceInvite   SpaceInvite[]
 
   @@map("users")
 }
@@ -40,6 +41,7 @@ model Space {
   event         Event[]
   SpaceTgChat   SpaceTgChat[]
   SpaceLinkCode SpaceLinkCode[]
+  SpaceInvite   SpaceInvite[]
 
   @@map("spaces")
 }
@@ -119,6 +121,28 @@ model MagicLink {
   createdAt DateTime  @default(now())
 
   @@map("magic_links")
+}
+
+model SpaceInvite {
+  id              String @id @default(uuid())
+  createdByUserId String
+  createdBy       User   @relation(fields: [createdByUserId], references: [id])
+  hashCode        String
+
+  maxUses   Int @default(1)
+  usedCount Int @default(0)
+
+  spaceId String
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  usedAt    DateTime?
+
+  @@index([spaceId])
+  @@index([expiresAt])
+  @@index([createdByUserId])
+  @@map("space_invites")
 }
 
 model EventReminder {

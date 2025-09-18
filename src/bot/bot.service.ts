@@ -1,4 +1,4 @@
-import { Body, Injectable } from '@nestjs/common';
+import { Body, Injectable, UseGuards } from '@nestjs/common';
 import { CreateUserDto } from 'users/dto/create-user.dto';
 import { UsersService } from 'users/users.service';
 import { MagicLinksService } from 'magic-links/magic-links.service';

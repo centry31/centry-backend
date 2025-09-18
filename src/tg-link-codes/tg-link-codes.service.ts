@@ -8,9 +8,9 @@ import { LinkTgChatToSpaceDto } from './dto/link-tg-chat-to-space.dto';
 
 @Injectable()
 export class TgLinkCodesService {
-	constructor(private prisma: PrismaService) {}
+	constructor(private prismaService: PrismaService) {}
 
-	/** Создаём одноразовый/многоразовый код */
+	/** Создаём одноразовый код */
 	async createLinkCode(dto: CreateLinkCodeDto, createdByUserId: string) {
 		const { spaceId } = dto;
 
@@ -18,7 +18,7 @@ export class TgLinkCodesService {
 		const hashCode = await bcrypt.hash(raw, 10);
 		const expiresAt = addMinutes(new Date(), 15);
 
-		const rec = await this.prisma.spaceLinkCode.create({
+		const rec = await this.prismaService.spaceLinkCode.create({
 			data: { spaceId, hashCode, expiresAt, maxUses: 1, createdByUserId },
 			select: { id: true },
 		});
@@ -38,7 +38,7 @@ export class TgLinkCodesService {
 			throw new HttpException('Некорректный формат кода', HttpStatus.BAD_REQUEST);
 		}
 
-		const link = await this.prisma.spaceLinkCode.findUnique({ where: { id } });
+		const link = await this.prismaService.spaceLinkCode.findUnique({ where: { id } });
 		if (!link) throw new HttpException('Код не найден', HttpStatus.NOT_FOUND);
 		if (link.usedAt) throw new HttpException('Код уже использован', HttpStatus.GONE);
 
@@ -55,13 +55,13 @@ export class TgLinkCodesService {
 
 	/** По факту использования кода: увеличиваем счётчик, при исчерпании — ставим usedAt */
 	private async markUsed(id: string) {
-		const updated = await this.prisma.spaceLinkCode.update({
+		const updated = await this.prismaService.spaceLinkCode.update({
 			where: { id },
 			data: { usedCount: { increment: 1 } },
 		});
 
 		if (updated.usedCount >= updated.maxUses && !updated.usedAt) {
-			await this.prisma.spaceLinkCode.update({
+			await this.prismaService.spaceLinkCode.update({
 				where: { id },
 				data: { usedAt: new Date() },
 			});
@@ -82,7 +82,7 @@ export class TgLinkCodesService {
 
 		// 1) валидируем код, получаем владельца
 		const link = await this.exchange(hashCode);
-		const linkOwner = await this.prisma.user.findUnique({
+		const linkOwner = await this.prismaService.user.findUnique({
 			where: { id: link.createdByUserId },
 		});
 		if (!linkOwner) {
@@ -103,7 +103,7 @@ export class TgLinkCodesService {
 		const threadId = messageThreadId ?? 0; // 0 = без темы
 
 		// 4) upsert по уникальному ключу
-		const linkedChat = await this.prisma.spaceTgChat.upsert({
+		const linkedChat = await this.prismaService.spaceTgChat.upsert({
 			where: {
 				spaceId_chatTgId_messageThreadId: {
 					spaceId: link.spaceId,
