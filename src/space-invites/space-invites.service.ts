@@ -19,7 +19,7 @@ export class SpaceInvitesService {
 		const raw = randomBytes(16).toString('hex');
 		const hashCode = await bcrypt.hash(raw, 10);
 
-		const rec = await this.prismaService.spaceLinkCode.create({
+		const rec = await this.prismaService.spaceInvite.create({
 			data: { spaceId, hashCode, expiresAt, maxUses, createdByUserId },
 			select: { id: true },
 		});
@@ -58,7 +58,7 @@ export class SpaceInvitesService {
 
 	async getSpaceInfoFromInviteLink(code: string) {
 		const link = await this.exchangeInviteLink(code);
-		const space = await this.prismaService.spaceLinkCode.findUnique({
+		const space = await this.prismaService.space.findFirst({
 			where: { id: link.spaceId },
 		});
 
@@ -71,6 +71,12 @@ export class SpaceInvitesService {
 
 	async acceptInviteLink(code: string, userId: string) {
 		const link = await this.exchangeInviteLink(code);
+
+		const alreadyMember = await this.prismaService.spaceMember.findFirst({
+			where: { spaceId: link.spaceId, userId },
+		});
+		if (alreadyMember) return;
+
 		await this.prismaService.space.update({
 			where: { id: link.spaceId },
 			data: { SpaceMember: { create: { userId } } },

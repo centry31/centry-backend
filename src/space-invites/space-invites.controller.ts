@@ -6,7 +6,7 @@ import { plainToInstance } from 'class-transformer';
 import { SpaceDto } from 'spaces/dto/space.dto';
 import { formatResponse } from 'common/utils/response.util';
 import { SpaceOwnerAccessGuard } from 'spaces/space-owner-access.guard';
-import { CreateSpaceInviteDto } from 'space-invites/dto/create-space-invite.dto';
+import { CreateSpaceInviteDto } from './dto/create-space-invite.dto';
 
 @Controller('space-invites')
 @UseGuards(JwtAuthGuard)
@@ -15,7 +15,7 @@ export class SpaceInvitesController {
 
 	@Post('info')
 	async getSpaceInfo(@Body('code') code: string) {
-		const space = this.spaceInvitesService.getSpaceInfoFromInviteLink(code);
+		const space = await this.spaceInvitesService.getSpaceInfoFromInviteLink(code);
 		const validatedSpace = plainToInstance(SpaceDto, space, { excludeExtraneousValues: true });
 		return formatResponse(validatedSpace, 'Информация о пространстве успешно получена');
 	}
@@ -23,7 +23,8 @@ export class SpaceInvitesController {
 	@Post('accept')
 	async acceptInviteLink(@Body('code') code: string, @Request() req: AuthenticatedRequest) {
 		const { user } = req;
-		await this.spaceInvitesService.acceptInviteLink(code, user.id);
+		const result = await this.spaceInvitesService.acceptInviteLink(code, user.id);
+		return formatResponse(result, 'Вы присоединились к пространству');
 	}
 
 	@Post('create')
@@ -33,7 +34,6 @@ export class SpaceInvitesController {
 		@Request() req: AuthenticatedRequest,
 	) {
 		const { user, currentSpaceId } = req;
-
 		const createdLink = await this.spaceInvitesService.createInviteLink(
 			createSpaceInviteDto,
 			user.id,
