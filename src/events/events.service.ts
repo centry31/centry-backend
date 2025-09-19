@@ -1,17 +1,26 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'prisma.service';
 import { CreateEventDto } from './dto/create-event-dto';
 import { UpdateEventDto } from 'events/dto/update-event.dto';
+import { EventRemindersService } from 'event-reminders/event-reminders.service';
+import { SpacesService } from 'spaces/spaces.service';
 
 @Injectable()
 export class EventsService {
-	constructor(private readonly prismaService: PrismaService) {}
+	constructor(
+		private readonly prismaService: PrismaService,
+		private readonly eventRemindersService: EventRemindersService,
+		private readonly spacesService: SpacesService,
+	) {}
 
 	/**
 	 * Получает все события, которые привязаны к конкретному пространству
 	 * */
 	async getEvents(spaceId: string) {
-		return this.prismaService.event.findMany({ where: { spaceId } });
+		return this.prismaService.event.findMany({
+			where: { spaceId },
+			include: { reminders: true },
+		});
 	}
 
 	/**
@@ -19,20 +28,8 @@ export class EventsService {
 	 *
 	 * @todo нужно добавить роли для создания, пока что создавать может только владалец пространства
 	 * */
-	async createEvents(createEventDto: CreateEventDto, userId: string, spaceId: string) {
-		const { title, description, start, end, isAllDay } = createEventDto;
-
-		const currentSpace = await this.prismaService.space.findFirst({
-			where: { id: spaceId },
-		});
-
-		// TODO: temp! added user roles for spaces (editor)
-		if (currentSpace.ownerID !== userId) {
-			throw new HttpException(
-				'У вас нет доступа для редактирования данного пространства',
-				HttpStatus.FORBIDDEN,
-			);
-		}
+	async createEvent(createEventDto: CreateEventDto, userId: string, spaceId: string) {
+		const { title, description, start, end, isAllDay, reminders } = createEventDto;
 
 		const createdEvent = await this.prismaService.event.create({
 			data: {
@@ -46,6 +43,15 @@ export class EventsService {
 				createdBy: { connect: { id: userId } },
 			},
 		});
+
+		const currentSpace = await this.spacesService.getSpace(spaceId);
+		if (currentSpace.hasActiveTgChats) {
+			/** Создаем все напоминания */
+			for (const reminder of reminders) {
+				await this.eventRemindersService.createByEventId(reminder, createdEvent.id);
+			}
+		}
+
 		return createdEvent;
 	}
 
@@ -54,37 +60,34 @@ export class EventsService {
 	 *
 	 * @todo нужно добавить роли для изменения, пока что менять может только владелец пространства
 	 * */
-	async updateEvent(
-		updateEventDto: UpdateEventDto,
-		eventId: string,
-		userId: string,
-		spaceId: string,
-	) {
-		const { title, description, start, end, isAllDay } = updateEventDto;
+	async updateEvent(updateEventDto: UpdateEventDto, eventId: string, spaceId: string) {
+		const { title, description, start, end, isAllDay, reminders } = updateEventDto;
 
-		const currentSpace = await this.prismaService.space.findFirst({
-			where: { id: spaceId },
-		});
-
-		// TODO: temp! added user roles for spaces (editor)
-		if (currentSpace.ownerID !== userId) {
-			throw new HttpException(
-				'У вас нет доступа для редактирования данного пространства',
-				HttpStatus.FORBIDDEN,
-			);
-		}
-
-		const updatedEvent = await this.prismaService.event.update({
-			where: { id: eventId },
+		await this.prismaService.event.update({
+			where: { id: eventId, spaceId },
 			data: {
 				title,
 				description,
 				start,
 				end,
 				isAllDay,
+				reminders: { deleteMany: {} },
 			},
 		});
-		return updatedEvent;
+
+		const currentSpace = await this.spacesService.getSpace(spaceId);
+		if (currentSpace.hasActiveTgChats) {
+			/** Очищаем все существующие напоминания и планируем заново */
+			await this.eventRemindersService.cancelAllByEventId(eventId);
+			for (const reminder of reminders) {
+				await this.eventRemindersService.createByEventId(reminder, eventId);
+			}
+		}
+
+		return this.prismaService.event.findUnique({
+			where: { id: eventId },
+			include: { reminders: true },
+		});
 	}
 
 	/**
@@ -92,20 +95,10 @@ export class EventsService {
 	 *
 	 * @todo нужно добавить роли для удаления, пока что менять может только удаления пространства
 	 * */
-	async deleteEvent(eventId: string, userId: string, spaceId: string) {
-		const currentSpace = await this.prismaService.space.findFirst({
-			where: { id: spaceId },
+	async deleteEvent(eventId: string, spaceId: string) {
+		const deletedEvent = await this.prismaService.event.delete({
+			where: { id: eventId, spaceId },
 		});
-
-		// TODO: temp! added user roles for spaces (editor)
-		if (currentSpace.ownerID !== userId) {
-			throw new HttpException(
-				'У вас нет доступа для редактирования данного пространства',
-				HttpStatus.FORBIDDEN,
-			);
-		}
-
-		const deletedEvent = await this.prismaService.event.delete({ where: { id: eventId } });
 		return deletedEvent;
 	}
 }

@@ -1,4 +1,7 @@
-import { IsString, IsOptional, IsDateString, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsDateString } from 'class-validator';
+import { IsBoolean, IsArray, ValidateNested, ArrayMaxSize } from 'class-validator';
+import { Type } from 'class-transformer';
+import { CreateEventReminderDto } from 'event-reminders/dto/create-event-reminder.dto';
 
 export class CreateEventDto {
 	@IsString()
@@ -17,4 +20,11 @@ export class CreateEventDto {
 	@IsOptional()
 	@IsBoolean()
 	isAllDay?: boolean;
+
+	@IsOptional()
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => CreateEventReminderDto)
+	@ArrayMaxSize(5)
+	reminders?: CreateEventReminderDto[];
 }

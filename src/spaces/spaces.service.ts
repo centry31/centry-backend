@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from 'prisma.service';
-import { CreateSpaceDto } from 'spaces/dto/create-space.dto';
-import { UpdateSpaceDto } from 'spaces/dto/update-space-dto';
+import { CreateSpaceDto } from './dto/create-space.dto';
+import { UpdateSpaceDto } from './dto/update-space-dto';
 
 // TODO: mb add SpaceGuardOwner?
 @Injectable()
@@ -54,24 +54,36 @@ export class SpacesService {
 	}
 
 	/**
+	 * Проверяет, что у пространства есть привязанные и активные тг чаты
+	 * */
+	async hasActiveTgChats(spaceId: string): Promise<boolean> {
+		const spaceTgChats = await this.prismaService.space.findFirst({
+			where: { id: spaceId, SpaceTgChat: { some: { isActive: true } } },
+			select: { id: true },
+		});
+		return Boolean(spaceTgChats);
+	}
+
+	/**
 	 * Получает пространство по id.
 	 * */
 	async getSpace(spaceId: string) {
-		return this.prismaService.space.findFirst({
-			where: { id: spaceId },
-		});
+		const [space, hasTg] = await Promise.all([
+			this.prismaService.space.findFirst({
+				where: { id: spaceId },
+			}),
+			this.hasActiveTgChats(spaceId),
+		]);
+
+		if (!space) return null;
+
+		return {
+			...space,
+			hasActiveTgChats: hasTg, // флаг для фронта
+		};
 	}
 
-	async updateSpaceInfo(updateSpaceDto: UpdateSpaceDto, spaceId: string, userId: string) {
-		const space = await this.prismaService.space.findFirst({ where: { id: spaceId } });
-
-		if (space.ownerID != userId) {
-			throw new HttpException(
-				'У вас нет прав редактировать данное пространство',
-				HttpStatus.FORBIDDEN,
-			);
-		}
-
+	async updateSpaceInfo(updateSpaceDto: UpdateSpaceDto, spaceId: string) {
 		return this.prismaService.space.update({
 			where: { id: spaceId },
 			data: {
@@ -81,16 +93,7 @@ export class SpacesService {
 		});
 	}
 
-	async deleteSpace(spaceId: string, userId: string) {
-		const space = await this.prismaService.space.findFirst({ where: { id: spaceId } });
-
-		if (space.ownerID != userId) {
-			throw new HttpException(
-				'У вас нет прав редактировать данное пространство',
-				HttpStatus.FORBIDDEN,
-			);
-		}
-
+	async deleteSpace(spaceId: string) {
 		return this.prismaService.space.delete({ where: { id: spaceId } });
 	}
 }
