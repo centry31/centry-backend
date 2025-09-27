@@ -12,7 +12,7 @@ export class SpaceTgChatsService {
 		private readonly tgBot: BotAdapter,
 	) {}
 
-	async linkTgChatToSpace(dto: LinkTgChatToSpaceDto) {
+	async linkTgChatToSpace(linkTgChatToSpaceDto: LinkTgChatToSpaceDto) {
 		const {
 			chatType,
 			chatTitle,
@@ -21,7 +21,7 @@ export class SpaceTgChatsService {
 			hashCode,
 			initiatedByTgId,
 			messageThreadId,
-		} = dto;
+		} = linkTgChatToSpaceDto;
 
 		// 1) валидируем код, получаем владельца
 		const link = await this.tgLinkCodesService.exchange(hashCode);

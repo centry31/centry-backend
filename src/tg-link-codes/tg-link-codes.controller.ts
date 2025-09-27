@@ -17,8 +17,6 @@ export class TgLinkCodesController {
 		@Request() req: AuthenticatedRequest,
 	) {
 		const { user } = req;
-		// TODO: use spaceId from req? (require set currentSpaceId on space details page)
-		const { spaceId } = createLinkCodeDto;
 
 		const linkCode = await this.tgLinkCodesService.createLinkCode(createLinkCodeDto, user.id);
 		return formatResponse(linkCode, 'Код для привязки группы и пространства успешно создан');

@@ -10,7 +10,7 @@ export class BotService {
 	constructor(
 		private readonly usersService: UsersService,
 		private readonly magicLinksService: MagicLinksService,
-		private readonly thChatsService: SpaceTgChatsService,
+		private readonly spaceTgChatsService: SpaceTgChatsService,
 	) {}
 
 	async registration(@Body() createUserDto: CreateUserDto) {
@@ -23,7 +23,7 @@ export class BotService {
 	}
 
 	async linkTgChatToSpace(linkTgChatToSpaceDto: LinkTgChatToSpaceDto) {
-		const linkedChat = await this.thChatsService.linkTgChatToSpace(linkTgChatToSpaceDto);
+		const linkedChat = await this.spaceTgChatsService.linkTgChatToSpace(linkTgChatToSpaceDto);
 		return linkedChat;
 	}
 }
