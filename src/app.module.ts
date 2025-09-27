@@ -12,6 +12,7 @@ import { SpacesModule } from 'spaces/spaces.module';
 import { EventRemindersModule } from 'event-reminders/event-reminders.module';
 import { TgLinkCodesModule } from 'tg-link-codes/tg-link-codes.module';
 import { SpaceInvitesModule } from 'space-invites/space-invites.module';
+import { SpaceTgChatsModule } from 'space-tg-chats/space-tg-chats.module';
 
 @Module({
 	controllers: [],
@@ -35,6 +36,7 @@ import { SpaceInvitesModule } from 'space-invites/space-invites.module';
 		EventRemindersModule,
 		TgLinkCodesModule,
 		SpaceInvitesModule,
+		SpaceTgChatsModule,
 	],
 })
 export class AppModule {}

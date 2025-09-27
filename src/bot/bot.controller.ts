@@ -2,9 +2,9 @@ import { Body, Controller, Post } from '@nestjs/common';
 import { BotService } from './bot.service';
 import type { CreateUserDto } from 'users/dto/create-user.dto';
 import { formatResponse } from 'common/utils/response.util';
-import { LinkTgChatToSpaceDto } from 'tg-link-codes/dto/link-tg-chat-to-space.dto';
 import { plainToInstance } from 'class-transformer';
-import { SpaceTgChatDto } from 'tg-link-codes/dto/space-tg-chat-dto';
+import { LinkTgChatToSpaceDto } from 'space-tg-chats/dto/link-tg-chat-to-space.dto';
+import { SpaceTgChatDto } from 'space-tg-chats/dto/space-tg-chat-dto';
 
 // TODO: добавить guard для бота
 @Controller('bot')
