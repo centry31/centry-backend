@@ -4,7 +4,6 @@ import { CreateLinkCodeDto } from './dto/create-link-code.dto';
 import { randomBytes } from 'crypto';
 import { addMinutes } from 'date-fns';
 import * as bcrypt from 'bcrypt';
-import { LinkTgChatToSpaceDto } from './dto/link-tg-chat-to-space.dto';
 
 @Injectable()
 export class TgLinkCodesService {
@@ -54,7 +53,7 @@ export class TgLinkCodesService {
 	}
 
 	/** По факту использования кода: увеличиваем счётчик, при исчерпании — ставим usedAt */
-	private async markUsed(id: string) {
+	async markUsed(id: string) {
 		const updated = await this.prismaService.spaceLinkCode.update({
 			where: { id },
 			data: { usedCount: { increment: 1 } },
@@ -66,71 +65,5 @@ export class TgLinkCodesService {
 				data: { usedAt: new Date() },
 			});
 		}
-	}
-
-	/** Привязка чат/топик к пространству кодом */
-	async linkTgChatToSpace(dto: LinkTgChatToSpaceDto) {
-		const {
-			chatType,
-			chatTitle,
-			chatTgId,
-			userTgId,
-			hashCode,
-			initiatedByTgId,
-			messageThreadId,
-		} = dto;
-
-		// 1) валидируем код, получаем владельца
-		const link = await this.exchange(hashCode);
-		const linkOwner = await this.prismaService.user.findUnique({
-			where: { id: link.createdByUserId },
-		});
-		if (!linkOwner) {
-			throw new HttpException('Владелец кода не найден', HttpStatus.NOT_FOUND);
-		}
-
-		// 2) проверяем, что /link нажал именно владелец
-		if (BigInt(userTgId) !== linkOwner.tgId) {
-			throw new HttpException(
-				'У вас нет прав привязывать пространство по этому коду',
-				HttpStatus.FORBIDDEN,
-			);
-		}
-
-		// 3) нормализуем идентификаторы
-		const chatIdBig = BigInt(chatTgId);
-		const initiatedByBig = BigInt(initiatedByTgId);
-		const threadId = messageThreadId ?? 0; // 0 = без темы
-
-		// 4) upsert по уникальному ключу
-		const linkedChat = await this.prismaService.spaceTgChat.upsert({
-			where: {
-				spaceId_chatTgId_messageThreadId: {
-					spaceId: link.spaceId,
-					chatTgId: chatIdBig,
-					messageThreadId: threadId,
-				},
-			},
-			update: {
-				chatType,
-				chatTitle,
-				initiatedByTgId: initiatedByBig,
-				isActive: true,
-			},
-			create: {
-				spaceId: link.spaceId,
-				chatTgId: chatIdBig,
-				chatType,
-				chatTitle,
-				messageThreadId: threadId,
-				initiatedByTgId: initiatedByBig,
-				isActive: true,
-			},
-		});
-
-		// 5) списываем использование кода
-		await this.markUsed(link.id);
-
-		return linkedChat;
 	}
 }
