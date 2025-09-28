@@ -1,14 +1,14 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from 'prisma.service';
 import { LinkTgChatToSpaceDto } from './dto/link-tg-chat-to-space.dto';
-import { TgLinkCodesService } from 'tg-link-codes/tg-link-codes.service';
+import { SpaceLinkCodesService } from 'space-link-codes/space-link-codes.service';
 import { BotAdapter } from 'bot/bot.adapter';
 
 @Injectable()
 export class SpaceTgChatsService {
 	constructor(
 		private readonly prismaService: PrismaService,
-		private readonly tgLinkCodesService: TgLinkCodesService,
+		private readonly tgLinkCodesService: SpaceLinkCodesService,
 		private readonly tgBot: BotAdapter,
 	) {}
 
