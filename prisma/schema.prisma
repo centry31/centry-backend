@@ -18,30 +18,31 @@ model User {
 
   // timeZone String @default("Europe/Moscow")
 
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  MagicLink     MagicLink[]
-  SpaceMember   SpaceMember[]
-  Event         Event[]
-  Space         Space[]         @relation("SpaceOwner")
-  SpaceLinkCode SpaceLinkCode[]
-  SpaceInvite   SpaceInvite[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  MagicLink       MagicLink[]
+  SpaceMember     SpaceMember[]
+  Event           Event[]
+  Space           Space[]           @relation("SpaceOwner")
+  SpaceLinkCode   SpaceLinkCode[]
+  SpaceInviteCode SpaceInviteCode[]
 
   @@map("users")
 }
 
 model Space {
-  id          String        @id @default(uuid())
+  id          String  @id @default(uuid())
   name        String
   description String?
-  owner       User          @relation("SpaceOwner", fields: [ownerID], references: [id])
+  owner       User    @relation("SpaceOwner", fields: [ownerID], references: [id])
   ownerID     String
-  SpaceMember SpaceMember[]
 
-  event         Event[]
-  SpaceTgChat   SpaceTgChat[]
-  SpaceLinkCode SpaceLinkCode[]
-  SpaceInvite   SpaceInvite[]
+  SpaceMember     SpaceMember[]
+  event           Event[]
+  SpaceTgChat     SpaceTgChat[]
+  SpaceLinkCode   SpaceLinkCode[]
+  SpaceInviteCode SpaceInviteCode[]
 
   @@map("spaces")
 }
@@ -123,11 +124,11 @@ model MagicLink {
   @@map("magic_links")
 }
 
-model SpaceInvite {
-  id              String @id @default(uuid())
+model SpaceInviteCode {
+  code String @unique
+
   createdByUserId String
   createdBy       User   @relation(fields: [createdByUserId], references: [id])
-  hashCode        String
 
   maxUses   Int @default(1)
   usedCount Int @default(0)
@@ -139,10 +140,11 @@ model SpaceInvite {
   createdAt DateTime  @default(now())
   usedAt    DateTime?
 
+  @@id([code])
   @@index([spaceId])
   @@index([expiresAt])
   @@index([createdByUserId])
-  @@map("space_invites")
+  @@map("space_invite_codes")
 }
 
 model EventReminder {

@@ -10,8 +10,8 @@ import { AuthModule } from 'auth/auth.module';
 import { EventsModule } from 'events/events.module';
 import { SpacesModule } from 'spaces/spaces.module';
 import { EventRemindersModule } from 'event-reminders/event-reminders.module';
-import { TgLinkCodesModule } from 'tg-link-codes/tg-link-codes.module';
-import { SpaceInvitesModule } from 'space-invites/space-invites.module';
+import { SpaceLinkCodesModule } from 'space-link-codes/space-link-codes.module';
+import { SpaceInviteCodesModule } from 'space-invite-codes/space-invite-codes.module';
 import { SpaceTgChatsModule } from 'space-tg-chats/space-tg-chats.module';
 
 @Module({
@@ -34,8 +34,8 @@ import { SpaceTgChatsModule } from 'space-tg-chats/space-tg-chats.module';
 		EventsModule,
 		SpacesModule,
 		EventRemindersModule,
-		TgLinkCodesModule,
-		SpaceInvitesModule,
+		SpaceLinkCodesModule,
+		SpaceInviteCodesModule,
 		SpaceTgChatsModule,
 	],
 })

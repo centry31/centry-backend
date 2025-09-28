@@ -6,7 +6,7 @@ import { addMinutes } from 'date-fns';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
-export class TgLinkCodesService {
+export class SpaceLinkCodesService {
 	constructor(private prismaService: PrismaService) {}
 
 	/** Создаём одноразовый код */
