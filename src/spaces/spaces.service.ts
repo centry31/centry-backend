@@ -96,4 +96,42 @@ export class SpacesService {
 	async deleteSpace(spaceId: string) {
 		return this.prismaService.space.delete({ where: { id: spaceId } });
 	}
+
+	/**
+	 * Выход пользователя из пространства.
+	 * Ограничения:
+	 *  - владелец не может покинуть пространство (должен сначала передать владение или удалить пространство)
+	 */
+	async leaveSpace(spaceId: string, userId: string) {
+		// Проверяем, что пользователь состоит в пространстве
+		const membership = await this.prismaService.spaceMember.findFirst({
+			where: { spaceId, userId },
+			select: { userId: true },
+		});
+		if (!membership) {
+			throw new HttpException('Вы не пользователь этого пространства', HttpStatus.NOT_FOUND);
+		}
+
+		// Проверяем, не является ли пользователь владельцем пространства
+		const space = await this.prismaService.space.findFirst({
+			where: { id: spaceId },
+		});
+		if (!space) {
+			throw new HttpException('Пространство не найдено', HttpStatus.NOT_FOUND);
+		}
+		if (space.ownerID === userId) {
+			throw new HttpException(
+				'Владелец пространства не может его покинуть',
+				HttpStatus.CONFLICT,
+			);
+		}
+
+		const result = await this.prismaService.spaceMember.deleteMany({
+			where: { spaceId, userId },
+		});
+
+		if (result.count === 0) {
+			throw new HttpException('Участник пространства не найден', HttpStatus.NOT_FOUND);
+		}
+	}
 }
