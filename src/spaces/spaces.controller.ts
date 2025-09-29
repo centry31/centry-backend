@@ -82,4 +82,12 @@ export class SpacesController {
 		});
 		return formatResponse(validatedDeletedSpace, 'Пространство успешно удалено');
 	}
+
+	@Delete('leave/:spaceId')
+	async leaveSpace(@Param('spaceId') spaceId: string, @Request() req: AuthenticatedRequest) {
+		const { user } = req;
+
+		await this.spacesService.leaveSpace(spaceId, user.id);
+		return formatResponse(null, 'Пользователь успешно покинул пространство');
+	}
 }
