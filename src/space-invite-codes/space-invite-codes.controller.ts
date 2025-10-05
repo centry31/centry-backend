@@ -5,7 +5,7 @@ import { SpaceInviteCodesService } from './space-invite-codes.service';
 import { plainToInstance } from 'class-transformer';
 import { SpaceDto } from 'spaces/dto/space.dto';
 import { formatResponse } from 'common/utils/response.util';
-import { SpaceOwnerAccessGuard } from 'spaces/space-owner-access.guard';
+import { SpaceOwnerAccessGuard } from 'spaces/guards/space-owner-access.guard';
 import { CreateSpaceInviteCodeDto } from './dto/create-space-invite-code.dto';
 import { SpaceInviteCodeDto } from 'space-invite-codes/dto/space-invite-code.dto';
 

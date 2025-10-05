@@ -25,7 +25,7 @@ export class AuthService {
 	 * Инициализирует пользователя по существующему токену
 	 * */
 	async init(userId: string) {
-		return this.usersService.findUserById(userId);
+		return this.usersService.getUserById(userId);
 	}
 
 	/**
@@ -86,7 +86,7 @@ export class AuthService {
 		const tgId = BigInt(telegramLoginDto.id);
 
 		// находим/создаём пользователя
-		const user = await this.usersService.findUserByTelegramId(tgId);
+		const user = await this.usersService.getUserByTelegramId(tgId);
 
 		if (user) {
 			const token = await this.generateToken(user);

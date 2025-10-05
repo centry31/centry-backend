@@ -1,36 +1,32 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { PrismaService } from 'prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UsersRepository } from './users.repository';
 
 @Injectable()
 export class UsersService {
-	constructor(private readonly prismaService: PrismaService) {}
+	constructor(private readonly usersRepository: UsersRepository) {}
 
 	private async createUser(createUserDto: CreateUserDto) {
 		const { chatId, tgId, displayName, username } = createUserDto;
 
-		return this.prismaService.user.create({
-			data: {
-				chatId,
-				tgId,
-				displayName,
-				username,
-			},
+		return this.usersRepository.createUser({
+			chatId,
+			tgId,
+			displayName,
+			username,
 		});
 	}
 
-	async findUserById(id: string) {
-		return this.prismaService.user.findFirst({ where: { id } });
+	async getUserById(id: string) {
+		return this.usersRepository.findById(id);
 	}
 
-	async findUserByTelegramId(tgId: bigint) {
-		return this.prismaService.user.findFirst({ where: { tgId } });
+	async getUserByTelegramId(tgId: bigint) {
+		return this.usersRepository.findByTelegramId(tgId);
 	}
 
 	async registration(createUserDto: CreateUserDto) {
-		const userCandidate = await this.prismaService.user.findFirst({
-			where: { tgId: createUserDto.tgId },
-		});
+		const userCandidate = await this.usersRepository.findByTelegramId(createUserDto.tgId);
 
 		if (userCandidate) {
 			throw new HttpException(
@@ -43,10 +39,7 @@ export class UsersService {
 	}
 
 	async getUserSpacesIDs(id: string) {
-		const spaces = await this.prismaService.space.findMany({
-			where: { OR: [{ ownerID: id }, { SpaceMember: { some: { userId: id } } }] },
-		});
-
-		return spaces.map((space) => space.id);
+		const spaces = await this.usersRepository.findSpacesByUserId(id);
+		return spaces.map((s) => s.id);
 	}
 }

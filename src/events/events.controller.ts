@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch } from '@nestjs/common';
 import { Post, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'auth/jwt-auth.guard';
-import { SpaceMemberAccessGuard } from 'spaces/space-member-access.guard';
+import { SpaceMemberAccessGuard } from 'spaces/guards/space-member-access.guard';
 import { CreateEventDto } from './dto/create-event-dto';
 import { AuthenticatedRequest } from 'auth/types/authenticated-request.interface';
 import { EventsService } from './events.service';
@@ -9,7 +9,7 @@ import { formatResponse } from 'common/utils/response.util';
 import { EventDto } from './dto/event.dto';
 import { plainToInstance } from 'class-transformer';
 import { UpdateEventDto } from './dto/update-event.dto';
-import { SpaceOwnerAccessGuard } from 'spaces/space-owner-access.guard';
+import { SpaceOwnerAccessGuard } from 'spaces/guards/space-owner-access.guard';
 
 @Controller('events')
 @UseGuards(JwtAuthGuard, SpaceMemberAccessGuard)

@@ -1,100 +1,80 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { PrismaService } from 'prisma.service';
 import { CreateSpaceDto } from './dto/create-space.dto';
 import { UpdateSpaceDto } from './dto/update-space-dto';
+import type { Space, User } from '@prisma/client';
+import { SpacesRepository } from './spaces.repository';
+import { UsersRepository } from 'users/users.repository';
+import type { AccessType } from './types/access.type';
 
-// TODO: mb add SpaceGuardOwner?
 @Injectable()
 export class SpacesService {
-	constructor(private readonly prismaService: PrismaService) {}
+	constructor(
+		private readonly spacesRepository: SpacesRepository,
+		private readonly usersRepository: UsersRepository,
+	) {}
 
-	/**
-	 * Получает всех участников пространства.
-	 * */
-	private async listMembers(spaceId: string) {
-		return this.prismaService.user.findMany({
-			where: { SpaceMember: { some: { spaceId } } },
-		});
-	}
-
-	/**
-	 * Создает пространство для пользователя.
-	 * */
-	async createSpace(createSpaceDto: CreateSpaceDto, userId: string) {
-		const { name, description } = createSpaceDto;
-
-		return this.prismaService.space.create({
-			data: {
-				name,
-				description,
-				owner: { connect: { id: userId } },
-				SpaceMember: {
-					create: {
-						user: { connect: { id: userId } },
-					},
-				},
-			},
-		});
-	}
-
-	/**
-	 * Получает все пространства пользователя, в которых он состоит.
-	 * */
-	async getPersonalUserSpaces(userId: string) {
-		return this.prismaService.space.findMany({
-			where: { SpaceMember: { some: { userId } } },
-		});
-	}
-
-	/**
-	 * Получает всех участников пространства.
-	 * */
-	async getSpaceMembers(spaceId: string) {
-		return this.listMembers(spaceId);
+	private async getUserAccess(space: Space, user: User): Promise<AccessType> {
+		return space.ownerID === user.id ? 'owner' : 'member';
 	}
 
 	/**
 	 * Проверяет, что у пространства есть привязанные и активные тг чаты
 	 * */
-	async hasActiveTgChats(spaceId: string): Promise<boolean> {
-		const spaceTgChats = await this.prismaService.space.findFirst({
-			where: { id: spaceId, SpaceTgChat: { some: { isActive: true } } },
-			select: { id: true },
-		});
+	async getHasActiveTgChatsFlag(spaceId: string) {
+		const spaceTgChats = await this.spacesRepository.hasActiveTgChats(spaceId);
 		return Boolean(spaceTgChats);
 	}
 
-	/**
-	 * Получает пространство по id.
-	 * */
-	async getSpace(spaceId: string) {
-		const [space, hasTg] = await Promise.all([
-			this.prismaService.space.findFirst({
-				where: { id: spaceId },
-			}),
-			this.hasActiveTgChats(spaceId),
-		]);
-
-		if (!space) return null;
-
-		return {
-			...space,
-			hasActiveTgChats: hasTg, // флаг для фронта
-		};
+	async enrichHasActiveTgChats(space: Space) {
+		const hasActiveTgChats = await this.getHasActiveTgChatsFlag(space.id);
+		return { ...space, hasActiveTgChats };
 	}
 
-	async updateSpaceInfo(updateSpaceDto: UpdateSpaceDto, spaceId: string) {
-		return this.prismaService.space.update({
-			where: { id: spaceId },
-			data: {
-				name: updateSpaceDto.name,
-				description: updateSpaceDto.description,
-			},
+	async enrichAccess(space: Space, userId: string) {
+		const user = await this.usersRepository.findById(userId);
+		const access = await this.getUserAccess(space, user);
+		return { ...space, access };
+	}
+
+	async enrich(space: Space, userId: string) {
+		const enrichedTg = await this.enrichHasActiveTgChats(space);
+		const enrichedAccess = await this.enrichAccess(enrichedTg, userId);
+		return enrichedAccess;
+	}
+
+	async create(createSpaceDto: CreateSpaceDto, userId: string) {
+		const { name, description } = createSpaceDto;
+		return this.spacesRepository.createSpace({
+			name,
+			description,
+			owner: { connect: { id: userId } },
+			SpaceMember: { create: { user: { connect: { id: userId } } } },
 		});
 	}
 
-	async deleteSpace(spaceId: string) {
-		return this.prismaService.space.delete({ where: { id: spaceId } });
+	async getListByUserId(userId: string) {
+		return this.spacesRepository.findManyByUserId(userId);
+	}
+
+	async getMembers(spaceId: string) {
+		return this.spacesRepository.findMembers(spaceId);
+	}
+
+	async getOne(spaceId: string, userId?: string) {
+		const space = await this.spacesRepository.findById(spaceId);
+		if (!space) return null;
+		return space;
+	}
+
+	async updateInfo(updateDto: UpdateSpaceDto, spaceId: string) {
+		return this.spacesRepository.update(spaceId, {
+			name: updateDto.name,
+			description: updateDto.description,
+		});
+	}
+
+	async delete(spaceId: string) {
+		return this.spacesRepository.delete(spaceId);
 	}
 
 	/**
@@ -102,23 +82,17 @@ export class SpacesService {
 	 * Ограничения:
 	 *  - владелец не может покинуть пространство (должен сначала передать владение или удалить пространство)
 	 */
-	async leaveSpace(spaceId: string, userId: string) {
-		// Проверяем, что пользователь состоит в пространстве
-		const membership = await this.prismaService.spaceMember.findFirst({
-			where: { spaceId, userId },
-			select: { userId: true },
-		});
+	async leave(spaceId: string, userId: string) {
+		const membership = await this.spacesRepository.findMembership(spaceId, userId);
 		if (!membership) {
 			throw new HttpException('Вы не пользователь этого пространства', HttpStatus.NOT_FOUND);
 		}
 
-		// Проверяем, не является ли пользователь владельцем пространства
-		const space = await this.prismaService.space.findFirst({
-			where: { id: spaceId },
-		});
+		const space = await this.spacesRepository.findById(spaceId);
 		if (!space) {
 			throw new HttpException('Пространство не найдено', HttpStatus.NOT_FOUND);
 		}
+
 		if (space.ownerID === userId) {
 			throw new HttpException(
 				'Владелец пространства не может его покинуть',
@@ -126,10 +100,7 @@ export class SpacesService {
 			);
 		}
 
-		const result = await this.prismaService.spaceMember.deleteMany({
-			where: { spaceId, userId },
-		});
-
+		const result = await this.spacesRepository.deleteMembership(spaceId, userId);
 		if (result.count === 0) {
 			throw new HttpException('Участник пространства не найден', HttpStatus.NOT_FOUND);
 		}

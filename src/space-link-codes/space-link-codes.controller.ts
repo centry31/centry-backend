@@ -4,7 +4,7 @@ import { AuthenticatedRequest } from 'auth/types/authenticated-request.interface
 import { formatResponse } from 'common/utils/response.util';
 import { SpaceLinkCodesService } from './space-link-codes.service';
 import { JwtAuthGuard } from 'auth/jwt-auth.guard';
-import { SpaceOwnerAccessGuard } from 'spaces/space-owner-access.guard';
+import { SpaceOwnerAccessGuard } from 'spaces/guards/space-owner-access.guard';
 
 @Controller('tg-link-codes')
 @UseGuards(JwtAuthGuard, SpaceOwnerAccessGuard)
