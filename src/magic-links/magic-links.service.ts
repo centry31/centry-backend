@@ -1,9 +1,10 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { PrismaService } from 'prisma.service';
 import { CreateMagicLinkDto } from './dto/create-magic-link.dto';
 
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
+import { MagicLinksRepository } from './magic-links.repository';
+import { UsersRepository } from 'users/users.repository';
 
 function addMinutes(date: Date, minutes: number): Date {
 	return new Date(date.getTime() + minutes * 60 * 1000);
@@ -11,7 +12,10 @@ function addMinutes(date: Date, minutes: number): Date {
 
 @Injectable()
 export class MagicLinksService {
-	constructor(private prismaService: PrismaService) {}
+	constructor(
+		private readonly magicLinksRepository: MagicLinksRepository,
+		private readonly usersRepository: UsersRepository,
+	) {}
 
 	/**
 	 * Создает ссылку для логина пользователя и устанавливает ее в бд
@@ -27,8 +31,10 @@ export class MagicLinksService {
 		const hashCode = await bcrypt.hash(rawCode, 10);
 		const expiresAt = addMinutes(new Date(), 10);
 
-		const createdLink = await this.prismaService.magicLink.create({
-			data: { hashCode, userId, expiresAt },
+		const createdLink = await this.magicLinksRepository.create({
+			user: { connect: { id: userId } },
+			hashCode,
+			expiresAt,
 		});
 
 		return `${createdLink.id}.${rawCode}`;
@@ -49,7 +55,7 @@ export class MagicLinksService {
 			throw new HttpException('Некорректный формат кода', HttpStatus.BAD_REQUEST);
 		}
 
-		const magicLink = await this.prismaService.magicLink.findFirst({ where: { id } });
+		const magicLink = await this.magicLinksRepository.findMagicLinkById(id);
 		if (!magicLink) {
 			throw new HttpException('Авторизационная ссылка не найдена', HttpStatus.NOT_FOUND);
 		}
@@ -66,14 +72,9 @@ export class MagicLinksService {
 			throw new HttpException('Авторизационная ссылка не найдена', HttpStatus.NOT_FOUND);
 		}
 
-		await this.prismaService.magicLink.update({
-			where: { id: magicLink.id },
-			data: { usedAt: new Date() },
-		});
+		await this.magicLinksRepository.markMagicLinkUsed(magicLink.id, new Date());
 
-		const user = await this.prismaService.user.findFirst({
-			where: { id: magicLink.userId },
-		});
+		const user = await this.usersRepository.findById(magicLink.userId);
 		if (!user) {
 			throw new HttpException('Пользователь не найден', HttpStatus.NOT_FOUND);
 		}

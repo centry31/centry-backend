@@ -1,13 +1,13 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { PrismaService } from 'prisma.service';
 import { LinkTgChatToSpaceDto } from './dto/link-tg-chat-to-space.dto';
 import { SpaceLinkCodesService } from 'space-link-codes/space-link-codes.service';
 import { BotAdapter } from 'bot/bot.adapter';
+import { SpaceTgChatsRepository } from './space-tg-chats.repository';
 
 @Injectable()
 export class SpaceTgChatsService {
 	constructor(
-		private readonly prismaService: PrismaService,
+		private readonly spaceTgChatsRepository: SpaceTgChatsRepository,
 		private readonly tgLinkCodesService: SpaceLinkCodesService,
 		private readonly tgBot: BotAdapter,
 	) {}
@@ -25,9 +25,7 @@ export class SpaceTgChatsService {
 
 		// 1) валидируем код, получаем владельца
 		const link = await this.tgLinkCodesService.exchange(hashCode);
-		const linkOwner = await this.prismaService.user.findUnique({
-			where: { id: link.createdByUserId },
-		});
+		const linkOwner = await this.spaceTgChatsRepository.findUserById(link.createdByUserId);
 		if (!linkOwner) {
 			throw new HttpException('Владелец кода не найден', HttpStatus.NOT_FOUND);
 		}
@@ -46,29 +44,14 @@ export class SpaceTgChatsService {
 		const threadId = messageThreadId ?? 0; // 0 = без темы
 
 		// 4) upsert по уникальному ключу
-		const linkedChat = await this.prismaService.spaceTgChat.upsert({
-			where: {
-				spaceId_chatTgId_messageThreadId: {
-					spaceId: link.spaceId,
-					chatTgId: chatIdBig,
-					messageThreadId: threadId,
-				},
-			},
-			update: {
-				chatType,
-				chatTitle,
-				initiatedByTgId: initiatedByBig,
-				isActive: true,
-			},
-			create: {
-				spaceId: link.spaceId,
-				chatTgId: chatIdBig,
-				chatType,
-				chatTitle,
-				messageThreadId: threadId,
-				initiatedByTgId: initiatedByBig,
-				isActive: true,
-			},
+		const linkedChat = await this.spaceTgChatsRepository.upsertSpaceTgChat({
+			spaceId: link.spaceId,
+			chatTgId: chatIdBig,
+			messageThreadId: threadId,
+			chatType,
+			chatTitle,
+			initiatedByTgId: initiatedByBig,
+			isActive: true,
 		});
 
 		// 5) списываем использование кода
@@ -78,9 +61,9 @@ export class SpaceTgChatsService {
 	}
 
 	async removeTgChatFromSpace(spaceId: string, chatId: string) {
-		const removedChat = await this.prismaService.spaceTgChat.delete({
-			where: { id: chatId, spaceId },
-			include: { space: true },
+		const removedChat = await this.spaceTgChatsRepository.deleteSpaceTgChat({
+			id: chatId,
+			spaceId,
 		});
 
 		await this.tgBot.sendMessage(
@@ -92,6 +75,6 @@ export class SpaceTgChatsService {
 	}
 
 	async getSpaceTgChats(spaceId: string) {
-		return this.prismaService.spaceTgChat.findMany({ where: { spaceId } });
+		return this.spaceTgChatsRepository.findManyBySpaceId(spaceId);
 	}
 }

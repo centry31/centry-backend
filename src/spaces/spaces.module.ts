@@ -10,6 +10,6 @@ import { SpacesRepository } from './spaces.repository';
 	controllers: [SpacesController],
 	providers: [SpacesService, PrismaService, SpacesRepository],
 	imports: [AuthModule, UsersModule],
-	exports: [SpacesService],
+	exports: [SpacesService, SpacesRepository],
 })
 export class SpacesModule {}
