@@ -41,6 +41,13 @@ export class SpacesRepository {
 		});
 	}
 
+	addMemberToSpace(spaceId: string, userId: string) {
+		return this.prismaService.space.update({
+			where: { id: spaceId },
+			data: { SpaceMember: { create: { userId } } },
+		});
+	}
+
 	deleteMembership(spaceId: string, userId: string) {
 		return this.prismaService.spaceMember.deleteMany({ where: { spaceId, userId } });
 	}
