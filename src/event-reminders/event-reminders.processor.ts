@@ -72,7 +72,11 @@ export class RemindersProcessor extends WorkerHost {
 		// Отправляем во все доступные чаты; BotAdapter уже прокидывает Cookie с TG_API_TOKEN
 		spaceTgGroups.forEach((group) => {
 			if (group.chatTgId) {
-				this.tgBot.sendMessage(group.chatTgId.toString(), text);
+				this.tgBot.sendMessage(
+					group.chatTgId.toString(),
+					group.messageThreadId.toString(),
+					text,
+				);
 			}
 		});
 

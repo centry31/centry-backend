@@ -41,13 +41,17 @@ export class BotAdapter {
 	/**
 	 * Отправляет сообщение в Telegram-чат.
 	 *
-	 * @param chatId ID чата в Telegram (числовой или строковый)
-	 * @param text   Основной текст сообщения
-	 * @param extra  Дополнительные параметры (опции форматирования, кнопки и пр.)
+	 * @param chatId {string} - ID чата в Telegram (числовой или строковый)
+	 * @param messageThreadId {string} - ID топика в Telegram
+	 * @param text {string} -  Основной текст сообщения
 	 */
-	async sendMessage(chatId: string, text: string, extra?: Record<string, unknown>) {
+	async sendMessage(chatId: string, messageThreadId: string, text: string) {
 		try {
-			await this.client.post(`${this.baseUrl}/sendMessage`, { chatId, text, extra });
+			await this.client.post(`${this.baseUrl}/sendMessage`, {
+				chatId,
+				messageThreadId,
+				text,
+			});
 			this.logger.debug(`Sent message to chat ${chatId}`);
 		} catch (e) {
 			this.logger.error(`Failed to send message: ${e}`);
