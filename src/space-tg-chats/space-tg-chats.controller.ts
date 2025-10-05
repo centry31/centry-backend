@@ -1,7 +1,7 @@
 import { Controller, Delete, Get, Param, UseGuards } from '@nestjs/common';
 import { SpaceTgChatsService } from './space-tg-chats.service';
 import { JwtAuthGuard } from 'auth/jwt-auth.guard';
-import { SpaceOwnerAccessGuard } from 'spaces/space-owner-access.guard';
+import { SpaceOwnerAccessGuard } from 'spaces/guards/space-owner-access.guard';
 import { plainToInstance } from 'class-transformer';
 import { SpaceTgChatDto } from 'space-tg-chats/dto/space-tg-chat-dto';
 import { formatResponse } from 'common/utils/response.util';

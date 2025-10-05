@@ -1,52 +1,46 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from 'prisma.service';
 import { CreateEventDto } from './dto/create-event-dto';
 import { UpdateEventDto } from 'events/dto/update-event.dto';
 import { EventRemindersService } from 'event-reminders/event-reminders.service';
 import { SpacesService } from 'spaces/spaces.service';
+import { EventsRepository } from './events.repository';
 
 @Injectable()
 export class EventsService {
 	constructor(
-		private readonly prismaService: PrismaService,
+		private readonly eventsRepository: EventsRepository,
 		private readonly eventRemindersService: EventRemindersService,
 		private readonly spacesService: SpacesService,
 	) {}
 
 	/**
 	 * Получает все события, которые привязаны к конкретному пространству
-	 * */
+	 */
 	async getEvents(spaceId: string) {
-		return this.prismaService.event.findMany({
-			where: { spaceId },
-			include: { reminders: true },
-		});
+		return this.eventsRepository.findManyBySpaceId(spaceId);
 	}
 
 	/**
 	 * Создает событие конкретному пространству
-	 *
-	 * @todo нужно добавить роли для создания, пока что создавать может только владалец пространства
-	 * */
+	 * @todo роли: пока только владелец
+	 */
 	async createEvent(createEventDto: CreateEventDto, userId: string, spaceId: string) {
 		const { title, description, start, end, isAllDay, reminders } = createEventDto;
 
-		const createdEvent = await this.prismaService.event.create({
-			data: {
-				title,
-				description,
-				start,
-				end,
-				isAllDay,
-
-				space: { connect: { id: spaceId } },
-				createdBy: { connect: { id: userId } },
-			},
+		const createdEvent = await this.eventsRepository.createEvent({
+			title,
+			description,
+			start,
+			end,
+			isAllDay,
+			space: { connect: { id: spaceId } },
+			createdBy: { connect: { id: userId } },
 		});
 
-		const currentSpace = await this.spacesService.getSpace(spaceId);
-		if (currentSpace.hasActiveTgChats) {
-			/** Создаем все напоминания */
+		const currentSpace = await this.spacesService.getOne(spaceId);
+		const hasActiveTgChats = await this.spacesService.getHasActiveTgChatsFlag(currentSpace.id);
+
+		if (hasActiveTgChats) {
 			for (const reminder of reminders) {
 				await this.eventRemindersService.createByEventId(reminder, createdEvent.id);
 			}
@@ -57,47 +51,44 @@ export class EventsService {
 
 	/**
 	 * Обновляет событие у конкретного пространства
-	 *
-	 * @todo нужно добавить роли для изменения, пока что менять может только владелец пространства
-	 * */
+	 * @todo роли: пока только владелец
+	 */
 	async updateEvent(updateEventDto: UpdateEventDto, eventId: string, spaceId: string) {
 		const { title, description, start, end, isAllDay, reminders } = updateEventDto;
 
-		await this.prismaService.event.update({
-			where: { id: eventId, spaceId },
-			data: {
+		await this.eventsRepository.updateEventClearingReminders(
+			{ id: eventId, spaceId },
+			{
 				title,
 				description,
 				start,
 				end,
 				isAllDay,
-				reminders: { deleteMany: {} },
 			},
-		});
+		);
 
-		const currentSpace = await this.spacesService.getSpace(spaceId);
-		if (currentSpace.hasActiveTgChats) {
-			/** Очищаем все существующие напоминания и планируем заново */
+		const currentSpace = await this.spacesService.getOne(spaceId);
+		const hasActiveTgChats = await this.spacesService.getHasActiveTgChatsFlag(currentSpace.id);
+
+		if (hasActiveTgChats) {
+			// Очищаем все существующие напоминания и планируем заново
 			await this.eventRemindersService.cancelAllByEventId(eventId);
 			for (const reminder of reminders) {
 				await this.eventRemindersService.createByEventId(reminder, eventId);
 			}
 		}
 
-		return this.prismaService.event.findUnique({
-			where: { id: eventId },
-			include: { reminders: true },
-		});
+		return this.eventsRepository.findByIdWithReminders(eventId);
 	}
 
 	/**
 	 * Удаляет событие у конкретного пространства
-	 *
-	 * @todo нужно добавить роли для удаления, пока что менять может только удаления пространства
-	 * */
+	 * @todo роли: пока только владелец пространства
+	 */
 	async deleteEvent(eventId: string, spaceId: string) {
-		const deletedEvent = await this.prismaService.event.delete({
-			where: { id: eventId, spaceId },
+		const deletedEvent = await this.eventsRepository.deleteByIdWithSpaceCheck({
+			id: eventId,
+			spaceId,
 		});
 		return deletedEvent;
 	}

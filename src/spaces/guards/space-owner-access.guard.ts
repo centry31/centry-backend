@@ -6,7 +6,7 @@ import {
 	NotFoundException,
 } from '@nestjs/common';
 import { AuthenticatedRequest } from 'auth/types/authenticated-request.interface';
-import { SpacesService } from './spaces.service';
+import { SpacesService } from '../spaces.service';
 
 /** Проверяет, что пользователь владеет пространством, к которому делает запрос */
 @Injectable()
@@ -29,7 +29,7 @@ export class SpaceOwnerAccessGuard implements CanActivate {
 			throw new ForbiddenException('Не указан spaceId');
 		}
 
-		const space = await this.spaceService.getSpace(targetSpaceId);
+		const space = await this.spaceService.getOne(targetSpaceId);
 		if (!space) {
 			throw new NotFoundException('Такое пространство не найдено');
 		}

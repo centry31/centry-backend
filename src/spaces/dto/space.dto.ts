@@ -1,16 +1,12 @@
-import { Expose, Type } from 'class-transformer';
-
-class OwnerMiniDto {
-	@Expose() id: string;
-	@Expose() displayName: string;
-	@Expose() username?: string;
-}
+import { Expose } from 'class-transformer';
+import type { AccessType } from '../types/access.type';
 
 export class SpaceDto {
 	@Expose() id: string;
 	@Expose() name: string;
 	@Expose() description?: string;
-	@Expose() hasActiveTgChats: boolean;
 
-	@Expose() @Type(() => OwnerMiniDto) createdBy?: OwnerMiniDto;
+	/** Enriched fields */
+	@Expose() hasActiveTgChats: boolean;
+	@Expose() access: AccessType;
 }
