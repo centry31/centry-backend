@@ -68,6 +68,7 @@ export class SpaceTgChatsService {
 
 		await this.tgBot.sendMessage(
 			String(removedChat.chatTgId),
+			String(removedChat.messageThreadId),
 			`Этот чат отвязан от пространства ${removedChat.space.name}`,
 		);
 
