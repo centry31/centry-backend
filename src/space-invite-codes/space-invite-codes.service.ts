@@ -27,7 +27,7 @@ export class SpaceInviteCodesService {
 	) {
 		const { maxUses, expiresAt, spaceId } = createSpaceInviteCodeDto;
 
-		const code = randomBytes(8).toString('base64');
+		const code = randomBytes(8).toString('base64url');
 		await this.spaceInviteCodesRepository.createInviteCode({
 			space: { connect: { id: spaceId } },
 			code,
