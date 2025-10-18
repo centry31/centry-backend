@@ -4,8 +4,10 @@ import type { LoginMagicLinkRepository } from '@users/application/ports/login-ma
 
 import { toDomain, toPersistence } from './mappers';
 
-import type { PrismaService } from 'prisma.service';
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from 'prisma.service';
 
+@Injectable()
 export class PrismaLoginMagicLinkRepository implements LoginMagicLinkRepository {
 	constructor(private readonly prismaService: PrismaService) {}
 

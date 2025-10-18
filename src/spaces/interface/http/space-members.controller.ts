@@ -4,12 +4,14 @@ import { LeaveSpaceUseCase } from '@spaces/application/use-cases/space-member/le
 import { SpaceMemberResponseDto } from './dto/space-member/space-member-response.dto';
 import { SpaceMembersExceptionFilter } from './filter/space-members-exception.filter';
 
-import { Controller, Delete, Get, Param, Request, UseFilters } from '@nestjs/common';
+import { Controller, Delete, Get, Param, Request, UseFilters, UseGuards } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { AuthenticatedRequest } from 'common/types/authenticated-request.interface';
 import { formatResponse } from 'common/utils/response.util';
+import { JwtAuthGuard } from 'users';
 
 @UseFilters(SpaceMembersExceptionFilter)
+@UseGuards(JwtAuthGuard)
 @Controller('space-members')
 export class SpaceMembersController {
 	constructor(

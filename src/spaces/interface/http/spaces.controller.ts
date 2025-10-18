@@ -53,7 +53,7 @@ export class SpacesController {
 	async getUserSpaces(@Request() req: AuthenticatedRequest) {
 		const { user } = req;
 		const spaces = await this.getUserSpacesUseCase.execute({ userId: user.id });
-		const response = spaces.map((space) => toSpaceResponse(space));
+		const response = spaces.map((space) => toSpaceResponse(space, user.id));
 		return formatResponse(response, 'Пространства пользователя получены');
 	}
 

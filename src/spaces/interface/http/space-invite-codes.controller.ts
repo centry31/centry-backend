@@ -4,8 +4,7 @@ import { DeleteSpaceInviteCodeUseCase } from '@spaces/application/use-cases/spac
 import { GetActiveSpaceInviteCodesUseCase } from '@spaces/application/use-cases/space-invite-code/get-active-space-invite-codes.use-case';
 import { GetInfoSpaceInviteCodeUseCase } from '@spaces/application/use-cases/space-invite-code/get-info-space-invite-code.use-case';
 
-import { toSpaceResponse } from 'spaces/interface/http/dto/space/space-response.mapper';
-
+import { toSpaceResponse } from './dto/space/space-response.mapper';
 import { AcceptSpaceInviteCodeDto } from './dto/space-invite-code/accept-space-invite-code.dto';
 import { CreateSpaceInviteCodeDto } from './dto/space-invite-code/create-space-invite-code.dto';
 import { GetInfoSpaceInviteCodeDto } from './dto/space-invite-code/get-info-space-invite-code.dto';
@@ -41,7 +40,7 @@ export class SpaceInviteCodesController {
 
 	@Post('accept')
 	async accept(
-		@Body('code') acceptSpaceInviteCodeDto: AcceptSpaceInviteCodeDto,
+		@Body() acceptSpaceInviteCodeDto: AcceptSpaceInviteCodeDto,
 		@Request() req: AuthenticatedRequest,
 	) {
 		const { user } = req;
@@ -57,9 +56,9 @@ export class SpaceInviteCodesController {
 		@Body() createSpaceInviteCodeDto: CreateSpaceInviteCodeDto,
 		@Request() req: AuthenticatedRequest,
 	) {
-		const { user, currentSpaceId } = req;
+		const { user } = req;
 		const code = await this.createSpaceInviteCodeUseCase.execute({
-			spaceId: currentSpaceId,
+			spaceId: createSpaceInviteCodeDto.spaceId,
 			createdByUserId: user.id,
 			expiresAt: createSpaceInviteCodeDto.expiresAt,
 			maxUses: createSpaceInviteCodeDto.maxUses,

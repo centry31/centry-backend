@@ -1,6 +1,8 @@
-import type { PrismaService } from 'prisma.service';
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from 'prisma.service';
 import type { UserQuery } from 'users';
 
+@Injectable()
 export class PrismaUserQuery implements UserQuery {
 	constructor(private prisma: PrismaService) {}
 

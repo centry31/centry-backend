@@ -34,7 +34,7 @@ export class GetInfoSpaceInviteCodeUseCase {
 			throw new InviteCodeInvalidError();
 		}
 
-		const space = await this.spaceRepository.findById(cmd.code);
+		const space = await this.spaceRepository.findById(foundCode.spaceId);
 		if (!space) {
 			throw new InviteCodeInvalidError();
 		}

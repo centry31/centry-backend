@@ -1,13 +1,12 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { PrismaService } from 'prisma.service';
 import { SpacesModule } from 'spaces/spaces.module';
 import { UsersModule } from 'users/users.module';
 
 @Module({
 	controllers: [],
-	providers: [PrismaService],
+	providers: [],
 	imports: [
 		ConfigModule.forRoot({
 			envFilePath: '.env',

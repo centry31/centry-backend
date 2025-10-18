@@ -1,17 +1,20 @@
 import { SpaceMemberLeaveError } from '@spaces/domain/errors/space-member-leave.error';
 import { SpaceMemberRemoveError } from '@spaces/domain/errors/space-member-remove.error';
 
-import type { ExceptionFilter } from '@nestjs/common';
-import { Catch, HttpException, HttpStatus } from '@nestjs/common';
+import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
+import { Catch, HttpStatus } from '@nestjs/common';
 
 @Catch(SpaceMemberLeaveError, SpaceMemberRemoveError)
 export class SpaceMembersExceptionFilter implements ExceptionFilter {
-	catch(exception: unknown) {
+	catch(exception: unknown, host: ArgumentsHost) {
+		const ctx = host.switchToHttp();
+		const res = ctx.getResponse();
+
 		if (exception instanceof SpaceMemberLeaveError) {
-			throw new HttpException(exception.message, HttpStatus.BAD_REQUEST);
+			return res.status(HttpStatus.BAD_REQUEST).json({ message: exception.message });
 		}
 		if (exception instanceof SpaceMemberRemoveError) {
-			throw new HttpException(exception.message, HttpStatus.BAD_REQUEST);
+			return res.status(HttpStatus.BAD_REQUEST).json({ message: exception.message });
 		}
 		throw exception;
 	}

@@ -11,14 +11,14 @@ import { PrismaLoginMagicLinkRepository } from './infrastructure/prisma/login-ma
 import { PrismaUserRepository } from './infrastructure/prisma/user/prisma-user.repository';
 
 import { AuthController } from './interface/auth.controller';
-import { JwtAuthGuard } from './interface/guard/auth/jwt-auth.guard';
 
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { PrismaService } from 'prisma.service';
+import { PrismaModule } from 'prisma.module';
 
 @Module({
 	imports: [
+		PrismaModule,
 		JwtModule.register({
 			// TODO: выставить через env
 			secret: process.env.SECRET_KEY || 'SECRET',
@@ -29,8 +29,6 @@ import { PrismaService } from 'prisma.service';
 	],
 	controllers: [AuthController],
 	providers: [
-		PrismaService,
-
 		RegisterUserUseCase,
 		TelegramAuthUseCase,
 		InitAuthUseCase,

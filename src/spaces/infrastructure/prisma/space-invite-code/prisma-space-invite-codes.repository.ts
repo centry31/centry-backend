@@ -4,8 +4,10 @@ import type { SpaceInviteCodeRepository } from '@spaces/application/ports/space-
 
 import { toDomain, toPersistence } from './mappers';
 
-import type { PrismaService } from 'prisma.service';
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from 'prisma.service';
 
+@Injectable()
 export class PrismaSpaceInviteCodesRepository implements SpaceInviteCodeRepository {
 	constructor(private readonly prisma: PrismaService) {}
 
@@ -34,7 +36,7 @@ export class PrismaSpaceInviteCodesRepository implements SpaceInviteCodeReposito
 
 	async findActiveBySpace(spaceId: string): Promise<SpaceInviteCode[]> {
 		const rows = await this.prisma.spaceInviteCode.findMany({
-			where: { spaceId, usedAt: null },
+			where: { spaceId, usedAt: null, expiresAt: { gt: new Date() } },
 		});
 
 		if (!rows.length) return [];

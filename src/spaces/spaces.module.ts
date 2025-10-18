@@ -26,15 +26,13 @@ import { SpaceMembersController } from './interface/http/space-members.controlle
 import { SpacesController } from './interface/http/spaces.controller';
 
 import { Module } from '@nestjs/common';
-import { PrismaService } from 'prisma.service';
+import { PrismaModule } from 'prisma.module';
 import { USER_QUERY, UsersModule } from 'users';
 
 @Module({
-	imports: [UsersModule],
+	imports: [PrismaModule, UsersModule],
 	controllers: [SpacesController, SpaceMembersController, SpaceInviteCodesController],
 	providers: [
-		PrismaService,
-
 		CreateSpaceUseCase,
 		GetUserSpacesUseCase,
 		GetSpaceUseCase,

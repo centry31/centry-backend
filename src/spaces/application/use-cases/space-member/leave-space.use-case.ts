@@ -25,8 +25,13 @@ export class LeaveSpaceUseCase {
 	) {}
 
 	async execute(cmd: Cmd): Promise<void> {
+		const space = await this.spaceRepository.findById(cmd.spaceId);
 		const member = await this.spaceMemberRepository.findOne(cmd.userId, cmd.spaceId);
+
 		if (!member) {
+			throw new SpaceMemberLeaveError();
+		}
+		if (space.ownerId === cmd.userId) {
 			throw new SpaceMemberLeaveError();
 		}
 
