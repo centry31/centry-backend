@@ -1,18 +1,21 @@
-import { Inject } from '@nestjs/common';
+import type { Space } from '@spaces/domain/space.entity';
+import { InviteCodeInvalidError } from 'spaces/domain/errors/invite-code-invalid.error';
+import { InviteCodeNotFoundError } from 'spaces/domain/errors/invite-code-not-found.error';
 
-import {
-	SPACE_INVITE_CODE_REPOSITORY,
-	SpaceInviteCodeRepository,
-} from '@spaces/application/ports/space-invite-code/space-invite-code.repository';
 import {
 	SPACE_REPOSITORY,
 	SpaceRepository,
 } from '@spaces/application/ports/space/space.repository';
-import { GetInfoSpaceInviteCodeCommand } from '@spaces/application/commands/space-invite-code/get-info-space-invite-code.command';
+import {
+	SPACE_INVITE_CODE_REPOSITORY,
+	SpaceInviteCodeRepository,
+} from '@spaces/application/ports/space-invite-code/space-invite-code.repository';
 
-import { Space } from '@spaces/domain/space.entity';
-import { InviteCodeNotFoundError } from 'spaces/domain/errors/invite-code-not-found.error';
-import { InviteCodeInvalidError } from 'spaces/domain/errors/invite-code-invalid.error';
+import { Inject } from '@nestjs/common';
+
+export type Cmd = {
+	code: string;
+};
 
 export class GetInfoSpaceInviteCodeUseCase {
 	constructor(
@@ -22,7 +25,7 @@ export class GetInfoSpaceInviteCodeUseCase {
 		private readonly spaceRepository: SpaceRepository,
 	) {}
 
-	async execute(cmd: GetInfoSpaceInviteCodeCommand): Promise<Space> {
+	async execute(cmd: Cmd): Promise<Space> {
 		const foundCode = await this.spaceInviteCodeRepository.findOneByCode(cmd.code);
 		if (!foundCode) {
 			throw new InviteCodeNotFoundError();

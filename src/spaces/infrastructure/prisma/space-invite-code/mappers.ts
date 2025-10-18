@@ -1,8 +1,8 @@
 import { SpaceInviteCode } from '@spaces/domain/space-invite-code.entity';
-import { InviteCode } from '@spaces/domain/value-objects/invite-code.vo';
 import { ExpiresAt } from '@spaces/domain/value-objects/expires-at.vo';
+import { InviteCode } from '@spaces/domain/value-objects/invite-code.vo';
 
-type SpaceInviteCodeRaw = {
+type Row = {
 	code: string;
 	createdByUserId: string;
 	maxUses: number;
@@ -13,7 +13,7 @@ type SpaceInviteCodeRaw = {
 	usedAt?: Date;
 };
 
-export function toDomain(row: SpaceInviteCodeRaw): SpaceInviteCode {
+export function toDomain(row: Row): SpaceInviteCode {
 	return new SpaceInviteCode({
 		code: new InviteCode(row.code),
 		createdByUserId: row.createdByUserId,
@@ -26,7 +26,7 @@ export function toDomain(row: SpaceInviteCodeRaw): SpaceInviteCode {
 	});
 }
 
-export function toPersistence(spaceInviteCode: SpaceInviteCode): SpaceInviteCodeRaw {
+export function toPersistence(spaceInviteCode: SpaceInviteCode): Row {
 	return {
 		code: spaceInviteCode.code.value,
 		createdByUserId: spaceInviteCode.createdByUserId,

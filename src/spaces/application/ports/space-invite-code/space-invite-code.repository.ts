@@ -1,4 +1,4 @@
-import { SpaceInviteCode } from '@spaces/domain/space-invite-code.entity';
+import type { SpaceInviteCode } from '@spaces/domain/space-invite-code.entity';
 
 export interface SpaceInviteCodeRepository {
 	findOneByCode(code: string): Promise<SpaceInviteCode | null>;

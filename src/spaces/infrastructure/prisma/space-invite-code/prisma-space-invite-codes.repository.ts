@@ -1,7 +1,10 @@
-import { PrismaService } from 'prisma.service';
+import type { SpaceInviteCode } from '@spaces/domain/space-invite-code.entity';
+
+import type { SpaceInviteCodeRepository } from '@spaces/application/ports/space-invite-code/space-invite-code.repository';
+
 import { toDomain, toPersistence } from './mappers';
-import { SpaceInviteCodeRepository } from '@spaces/application/ports/space-invite-code/space-invite-code.repository';
-import { SpaceInviteCode } from '@spaces/domain/space-invite-code.entity';
+
+import type { PrismaService } from 'prisma.service';
 
 export class PrismaSpaceInviteCodesRepository implements SpaceInviteCodeRepository {
 	constructor(private readonly prisma: PrismaService) {}

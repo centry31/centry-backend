@@ -1,25 +1,34 @@
-import { Body, Controller, Delete, Get, Param, Post, Request, UseFilters } from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
-
-import { AuthenticatedRequest } from 'common/types/authenticated-request.interface';
-import { formatResponse } from 'common/utils/response.util';
-
-import { CreateSpaceInviteCodeUseCase } from '@spaces/application/use-cases/space-invite-code/create-space-invite-code.use-case';
 import { AcceptSpaceInviteCodeUseCase } from '@spaces/application/use-cases/space-invite-code/accept-space-invite-code.use-case';
-import { GetInfoSpaceInviteCodeUseCase } from '@spaces/application/use-cases/space-invite-code/get-info-space-invite-code.use-case';
-import { GetActiveSpaceInviteCodesUseCase } from '@spaces/application/use-cases/space-invite-code/get-active-space-invite-codes.use-case';
+import { CreateSpaceInviteCodeUseCase } from '@spaces/application/use-cases/space-invite-code/create-space-invite-code.use-case';
 import { DeleteSpaceInviteCodeUseCase } from '@spaces/application/use-cases/space-invite-code/delete-space-invite-code.use-case';
+import { GetActiveSpaceInviteCodesUseCase } from '@spaces/application/use-cases/space-invite-code/get-active-space-invite-codes.use-case';
+import { GetInfoSpaceInviteCodeUseCase } from '@spaces/application/use-cases/space-invite-code/get-info-space-invite-code.use-case';
 
+import { toSpaceResponse } from 'spaces/interface/http/dto/space/space-response.mapper';
+
+import { AcceptSpaceInviteCodeDto } from './dto/space-invite-code/accept-space-invite-code.dto';
+import { CreateSpaceInviteCodeDto } from './dto/space-invite-code/create-space-invite-code.dto';
+import { GetInfoSpaceInviteCodeDto } from './dto/space-invite-code/get-info-space-invite-code.dto';
+import { toSpaceInviteCodeResponse } from './dto/space-invite-code/space-invite-code-response.mapper';
 import { SpaceInviteCodesExceptionFilter } from './filter/space-invite-codes-exception.filter';
 
-import { CreateSpaceInviteCodeDto } from './dto/space-invite-code/create-space-invite-code.dto';
-import { AcceptSpaceInviteCodeDto } from './dto/space-invite-code/accept-space-invite-code.dto';
-import { SpaceInviteCodeResponseDto } from './dto/space-invite-code/space-invite-code-response.dto';
-import { GetInfoSpaceInviteCodeDto } from './dto/space-invite-code/get-info-space-invite-code.dto';
-import { SpaceResponseDto } from './dto/space/space-response.dto';
+import {
+	Body,
+	Controller,
+	Delete,
+	Get,
+	Param,
+	Post,
+	Request,
+	UseFilters,
+	UseGuards,
+} from '@nestjs/common';
+import { AuthenticatedRequest } from 'common/types/authenticated-request.interface';
+import { formatResponse } from 'common/utils/response.util';
+import { JwtAuthGuard } from 'users';
 
-// TODO: добавить гварды!!!
 @UseFilters(SpaceInviteCodesExceptionFilter)
+@UseGuards(JwtAuthGuard)
 @Controller('space-invite-codes')
 export class SpaceInviteCodesController {
 	constructor(
@@ -55,10 +64,8 @@ export class SpaceInviteCodesController {
 			expiresAt: createSpaceInviteCodeDto.expiresAt,
 			maxUses: createSpaceInviteCodeDto.maxUses,
 		});
-		const responseDto = plainToInstance(SpaceInviteCodeResponseDto, code, {
-			excludeExtraneousValues: true,
-		});
-		return formatResponse(responseDto, 'Код создан');
+		const response = toSpaceInviteCodeResponse(code);
+		return formatResponse(response, 'Код создан');
 	}
 
 	@Post('info')
@@ -66,19 +73,15 @@ export class SpaceInviteCodesController {
 		const info = await this.getInfoSpaceInviteCodeUseCase.execute({
 			code: getInfoSpaceInviteCodeDto.code,
 		});
-		const responseDto = plainToInstance(SpaceResponseDto, info, {
-			excludeExtraneousValues: true,
-		});
-		return formatResponse(responseDto, 'Информация о пространстве по коду получена');
+		const response = toSpaceResponse(info);
+		return formatResponse(response, 'Информация о пространстве по коду получена');
 	}
 
 	@Get(':spaceId')
 	async getManyActive(@Param('spaceId') spaceId: string) {
 		const codes = await this.getActiveSpaceInviteCodesUseCase.execute({ spaceId });
-		const responseDto = codes.map((code) =>
-			plainToInstance(SpaceInviteCodeResponseDto, code, { excludeExtraneousValues: true }),
-		);
-		return formatResponse(responseDto, 'Активные коды успешно получены');
+		const response = codes.map((code) => toSpaceInviteCodeResponse(code));
+		return formatResponse(response, 'Активные коды успешно получены');
 	}
 
 	@Delete(':spaceId/delete/:code')

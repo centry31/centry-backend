@@ -1,8 +1,11 @@
+import type { SpaceMember } from '@spaces/domain/space-member.entity';
+
+import type { SpaceMemberRepository } from '@spaces/application/ports/space-member/space-member.repository';
+
+import { toDomain } from './mappers';
+
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'prisma.service';
-import { toDomain } from './mappers';
-import { SpaceMemberRepository } from '@spaces/application/ports/space-member/space-member.repository';
-import { SpaceMember } from '@spaces/domain/space-member.entity';
 
 @Injectable()
 export class PrismaSpaceMemberRepository implements SpaceMemberRepository {

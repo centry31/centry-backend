@@ -1,14 +1,15 @@
-import { Controller, Delete, Get, Param, Request } from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
+import { GetSpaceMembersUseCase } from '@spaces/application/use-cases/space-member/get-space-members.use-case';
+import { LeaveSpaceUseCase } from '@spaces/application/use-cases/space-member/leave-space.use-case';
 
+import { SpaceMemberResponseDto } from './dto/space-member/space-member-response.dto';
+import { SpaceMembersExceptionFilter } from './filter/space-members-exception.filter';
+
+import { Controller, Delete, Get, Param, Request, UseFilters } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
 import { AuthenticatedRequest } from 'common/types/authenticated-request.interface';
 import { formatResponse } from 'common/utils/response.util';
 
-import { LeaveSpaceUseCase } from '@spaces/application/use-cases/space-member/leave-space.use-case';
-import { GetSpaceMembersUseCase } from '@spaces/application/use-cases/space-member/get-space-members.use-case';
-
-import { SpaceMemberResponseDto } from './dto/space-member/space-member-response.dto';
-
+@UseFilters(SpaceMembersExceptionFilter)
 @Controller('space-members')
 export class SpaceMembersController {
 	constructor(

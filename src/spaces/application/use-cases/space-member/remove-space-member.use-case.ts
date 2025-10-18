@@ -1,17 +1,21 @@
-import { Inject } from '@nestjs/common';
+import { SpaceMemberRemoveError } from '@spaces/domain/errors/space-member-remove.error';
+import { SpaceNotFoundError } from '@spaces/domain/errors/space-not-found.error';
 
-import {
-	SPACE_MEMBER_REPOSITORY,
-	SpaceMemberRepository,
-} from '@spaces/application/ports/space-member/space-member.repository';
-import { RemoveSpaceMemberCommand } from '@spaces/application/commands/space-member/remove-space-member.command';
 import {
 	SPACE_REPOSITORY,
 	SpaceRepository,
 } from '@spaces/application/ports/space/space.repository';
+import {
+	SPACE_MEMBER_REPOSITORY,
+	SpaceMemberRepository,
+} from '@spaces/application/ports/space-member/space-member.repository';
 
-import { SpaceNotFoundError } from '@spaces/domain/errors/space-not-found.error';
-import { SpaceMemberRemoveError } from '@spaces/domain/errors/space-member-remove.error';
+import { Inject } from '@nestjs/common';
+
+type Cmd = {
+	spaceId: string;
+	userId: string;
+};
 
 export class RemoveSpaceMemberUseCase {
 	constructor(
@@ -21,7 +25,7 @@ export class RemoveSpaceMemberUseCase {
 		private readonly spaceRepository: SpaceRepository,
 	) {}
 
-	async execute(cmd: RemoveSpaceMemberCommand): Promise<void> {
+	async execute(cmd: Cmd): Promise<void> {
 		const space = await this.spaceRepository.findById(cmd.spaceId);
 		if (!space) {
 			throw new SpaceNotFoundError();

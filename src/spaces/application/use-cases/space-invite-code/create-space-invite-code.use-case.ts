@@ -1,15 +1,22 @@
-import { Inject } from '@nestjs/common';
 import { randomBytes } from 'crypto';
+
+import { SpaceInviteCode } from '@spaces/domain/space-invite-code.entity';
+import { ExpiresAt } from '@spaces/domain/value-objects/expires-at.vo';
+import { InviteCode } from '@spaces/domain/value-objects/invite-code.vo';
 
 import {
 	SPACE_INVITE_CODE_REPOSITORY,
 	SpaceInviteCodeRepository,
 } from '@spaces/application/ports/space-invite-code/space-invite-code.repository';
-import { CreateSpaceInviteCodeCommand } from '@spaces/application/commands/space-invite-code/create-space-invite-code.command';
 
-import { SpaceInviteCode } from '@spaces/domain/space-invite-code.entity';
-import { InviteCode } from '@spaces/domain/value-objects/invite-code.vo';
-import { ExpiresAt } from '@spaces/domain/value-objects/expires-at.vo';
+import { Inject } from '@nestjs/common';
+
+type Cmd = {
+	maxUses: number;
+	expiresAt: Date;
+	spaceId: string;
+	createdByUserId: string;
+};
 
 export class CreateSpaceInviteCodeUseCase {
 	constructor(
@@ -17,7 +24,7 @@ export class CreateSpaceInviteCodeUseCase {
 		private readonly spaceInviteCodeRepository: SpaceInviteCodeRepository,
 	) {}
 
-	async execute(cmd: CreateSpaceInviteCodeCommand): Promise<SpaceInviteCode> {
+	async execute(cmd: Cmd): Promise<SpaceInviteCode> {
 		const code = randomBytes(8).toString('base64url');
 		const spaceInviteCode = new SpaceInviteCode({
 			code: new InviteCode(code),

@@ -1,20 +1,32 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Request } from '@nestjs/common';
-import { plainToInstance } from 'class-transformer';
-
-import { AuthenticatedRequest } from 'common/types/authenticated-request.interface';
-import { formatResponse } from 'common/utils/response.util';
-
 import { CreateSpaceUseCase } from '@spaces/application/use-cases/space/create-space.use-case';
-import { GetUserSpacesUseCase } from '@spaces/application/use-cases/space/get-user-spaces.use-case';
-import { GetSpaceUseCase } from '@spaces/application/use-cases/space/get-space.use-case';
-import { UpdateSpaceUseCase } from '@spaces/application/use-cases/space/update-space.use-case';
 import { DeleteSpaceUseCase } from '@spaces/application/use-cases/space/delete-space.use-case';
+import { GetSpaceUseCase } from '@spaces/application/use-cases/space/get-space.use-case';
+import { GetUserSpacesUseCase } from '@spaces/application/use-cases/space/get-user-spaces.use-case';
+import { UpdateSpaceUseCase } from '@spaces/application/use-cases/space/update-space.use-case';
 
 import { CreateSpaceDto } from './dto/space/create-space.dto';
-import { SpaceResponseDto } from './dto/space/space-response.dto';
-import { UpdateSpaceDto } from 'spaces/interface/http/dto/space/update-space.dto';
+import { toSpaceResponse } from './dto/space/space-response.mapper';
+import { UpdateSpaceDto } from './dto/space/update-space.dto';
+import { SpaceExceptionFilter } from './filter/space-exception.filter';
 
-// TODO: добавить гварды!!!
+import {
+	Body,
+	Controller,
+	Delete,
+	Get,
+	Param,
+	Patch,
+	Post,
+	Request,
+	UseFilters,
+	UseGuards,
+} from '@nestjs/common';
+import { AuthenticatedRequest } from 'common/types/authenticated-request.interface';
+import { formatResponse } from 'common/utils/response.util';
+import { JwtAuthGuard } from 'users';
+
+@UseFilters(SpaceExceptionFilter)
+@UseGuards(JwtAuthGuard)
 @Controller('spaces')
 export class SpacesController {
 	constructor(
@@ -33,29 +45,23 @@ export class SpacesController {
 			description: createSpaceDto.description,
 			ownerId: user.id,
 		});
-		const responseDto = plainToInstance(SpaceResponseDto, space, {
-			excludeExtraneousValues: true,
-		});
-		return formatResponse(responseDto, 'Пространство создано');
+		const response = toSpaceResponse(space);
+		return formatResponse(response, 'Пространство создано');
 	}
 
 	@Get()
 	async getUserSpaces(@Request() req: AuthenticatedRequest) {
 		const { user } = req;
 		const spaces = await this.getUserSpacesUseCase.execute({ userId: user.id });
-		const responseDto = spaces.map((space) =>
-			plainToInstance(SpaceResponseDto, space, { excludeExtraneousValues: true }),
-		);
-		return formatResponse(responseDto, 'Пространства пользователя получены');
+		const response = spaces.map((space) => toSpaceResponse(space));
+		return formatResponse(response, 'Пространства пользователя получены');
 	}
 
 	@Get(':spaceId')
 	async get(@Param('spaceId') spaceId: string) {
 		const space = await this.getSpaceUseCase.execute({ spaceId });
-		const responseDto = plainToInstance(SpaceResponseDto, space, {
-			excludeExtraneousValues: true,
-		});
-		return formatResponse(responseDto, 'Пространство получено');
+		const response = toSpaceResponse(space);
+		return formatResponse(response, 'Пространство получено');
 	}
 
 	@Patch(':spaceId')

@@ -1,3 +1,5 @@
+const { builtinModules } = require('module');
+
 module.exports = {
 	parser: '@typescript-eslint/parser',
 	parserOptions: {
@@ -5,7 +7,7 @@ module.exports = {
 		tsconfigRootDir: __dirname,
 		sourceType: 'module',
 	},
-	plugins: ['@typescript-eslint/eslint-plugin', 'import'],
+	plugins: ['@typescript-eslint', 'import', 'simple-import-sort'],
 	extends: ['plugin:@typescript-eslint/recommended', 'plugin:prettier/recommended'],
 	root: true,
 	env: {
@@ -23,8 +25,35 @@ module.exports = {
 			{
 				prefer: 'type-imports',
 				disallowTypeAnnotations: false,
-				fixStyle: 'inline-type-imports',
+				fixStyle: 'separate-type-imports',
 			},
 		],
+
+		// импорт-правила
+		'import/no-duplicates': 'error',
+		'import/order': 'off', // отключаем, чтобы не конфликтовал с simple-import-sort
+		'sort-imports': 'off',
+
+		// сортировка импортов
+		'simple-import-sort/imports': [
+			'error',
+			{
+				groups: [
+					// 1) node builtin
+					['^node:', `^(${builtinModules.join('|')})(/|$)`],
+
+					// 2) DDD-слои (независимо от префикса: @spaces/application, users/domain, application/..., etc.)
+					['(^|/)use-cases(/|$)'],
+					['(^|/)domain(/|$)'],
+					['(^|/)ports(/|$)'],
+					['(^|/)(infrastructure)(/|$)'],
+					['(^|/)interface(s)?(/|$)'],
+
+					// 3) относительные (приоритет: вверх, затем текущая папка)
+					['^\\.\\.(?!/?$)', '^\\.\\./', '^\\.(?!/?$)', '^\\./'],
+				],
+			},
+		],
+		'simple-import-sort/exports': 'error',
 	},
 };

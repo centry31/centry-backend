@@ -1,16 +1,20 @@
-import { Inject } from '@nestjs/common';
+import { SpaceMemberLeaveError } from '@spaces/domain/errors/space-member-leave.error';
 
-import {
-	SPACE_MEMBER_REPOSITORY,
-	SpaceMemberRepository,
-} from '@spaces/application/ports/space-member/space-member.repository';
 import {
 	SPACE_REPOSITORY,
 	SpaceRepository,
 } from '@spaces/application/ports/space/space.repository';
-import { LeaveSpaceCommand } from '@spaces/application/commands/space-member/leave-space.command';
+import {
+	SPACE_MEMBER_REPOSITORY,
+	SpaceMemberRepository,
+} from '@spaces/application/ports/space-member/space-member.repository';
 
-import { SpaceMemberLeaveError } from '@spaces/domain/errors/space-member-leave.error';
+import { Inject } from '@nestjs/common';
+
+type Cmd = {
+	spaceId: string;
+	userId: string;
+};
 
 export class LeaveSpaceUseCase {
 	constructor(
@@ -20,7 +24,7 @@ export class LeaveSpaceUseCase {
 		private readonly spaceRepository: SpaceRepository,
 	) {}
 
-	async execute(cmd: LeaveSpaceCommand): Promise<void> {
+	async execute(cmd: Cmd): Promise<void> {
 		const member = await this.spaceMemberRepository.findOne(cmd.userId, cmd.spaceId);
 		if (!member) {
 			throw new SpaceMemberLeaveError();

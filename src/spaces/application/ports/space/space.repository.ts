@@ -1,4 +1,4 @@
-import { Space } from '@spaces/domain/space.entity';
+import type { Space } from '@spaces/domain/space.entity';
 
 export interface SpaceRepository {
 	create(space: Space): Promise<Space>;

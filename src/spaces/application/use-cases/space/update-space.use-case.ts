@@ -1,16 +1,24 @@
+import { Space } from '@spaces/domain/space.entity';
+import { SpaceName } from '@spaces/domain/value-objects/space-name.vo';
+
+import {
+	SPACE_REPOSITORY,
+	SpaceRepository,
+} from '@spaces/application/ports/space/space.repository';
+
 import { Inject } from '@nestjs/common';
 
-import { Space } from '@spaces/domain/space.entity';
-
-import { SPACE_REPOSITORY } from '@spaces/application/ports/space/space.repository';
-import { SpaceRepository } from '@spaces/application/ports/space/space.repository';
-import { UpdateSpaceCommand } from '@spaces/application/commands/space/update-space.command';
-import { SpaceName } from '@spaces/domain/value-objects/space-name.vo';
+type Cmd = {
+	spaceId: string;
+	ownerId: string;
+	name: string;
+	description?: string;
+};
 
 export class UpdateSpaceUseCase {
 	constructor(@Inject(SPACE_REPOSITORY) private readonly spaceRepository: SpaceRepository) {}
 
-	async execute(cmd: UpdateSpaceCommand): Promise<void> {
+	async execute(cmd: Cmd): Promise<void> {
 		const space = new Space({
 			id: cmd.spaceId,
 			ownerId: cmd.ownerId,

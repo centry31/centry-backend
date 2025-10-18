@@ -1,4 +1,4 @@
-import { TgId } from './value-objests/tg-id.vo';
+import type { TgId } from './value-objests/tg-id.vo';
 
 export class User {
 	public readonly id: string;

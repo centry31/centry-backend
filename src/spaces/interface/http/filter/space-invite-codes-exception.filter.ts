@@ -1,6 +1,8 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
-import { InviteCodeInvalidError } from 'spaces/domain/errors/invite-code-invalid.error';
-import { InviteCodeNotFoundError } from 'spaces/domain/errors/invite-code-not-found.error';
+import { InviteCodeInvalidError } from '@spaces/domain/errors/invite-code-invalid.error';
+import { InviteCodeNotFoundError } from '@spaces/domain/errors/invite-code-not-found.error';
+
+import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
+import { Catch, HttpException, HttpStatus } from '@nestjs/common';
 
 @Catch(InviteCodeNotFoundError, InviteCodeInvalidError)
 export class SpaceInviteCodesExceptionFilter implements ExceptionFilter {

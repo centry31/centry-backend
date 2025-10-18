@@ -1,4 +1,4 @@
-import { Request } from 'express';
+import type { Request } from 'express';
 
 // TODO: разнести и переместить
 /** Интерфейс для декодированной информации из JWT */

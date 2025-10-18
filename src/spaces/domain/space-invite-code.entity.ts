@@ -1,5 +1,5 @@
-import { InviteCode } from './value-objects/invite-code.vo';
-import { ExpiresAt } from './value-objects/expires-at.vo';
+import type { ExpiresAt } from './value-objects/expires-at.vo';
+import type { InviteCode } from './value-objects/invite-code.vo';
 
 export class SpaceInviteCode {
 	public readonly code: InviteCode;

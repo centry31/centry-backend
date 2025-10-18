@@ -1,4 +1,4 @@
-import { SpaceMember } from '@spaces/domain/space-member.entity';
+import type { SpaceMember } from '@spaces/domain/space-member.entity';
 
 export interface SpaceMemberRepository {
 	findOne(userId: string, spaceId: string): Promise<SpaceMember | null>;

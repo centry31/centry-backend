@@ -1,5 +1,4 @@
 import { SpaceName } from './value-objects/space-name.vo';
-import { SpaceMember } from './space-member.entity';
 
 export class Space {
 	public readonly id: string;
@@ -7,13 +6,7 @@ export class Space {
 	public description?: string;
 	public readonly ownerId: string;
 
-	constructor(props: {
-		id: string;
-		name: SpaceName;
-		ownerId: string;
-		description?: string;
-		members?: SpaceMember[];
-	}) {
+	constructor(props: { id: string; name: SpaceName; ownerId: string; description?: string }) {
 		this.id = props.id;
 		this.name = props.name;
 		this.description = props.description;

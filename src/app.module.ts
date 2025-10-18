@@ -1,11 +1,9 @@
+import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { BullModule } from '@nestjs/bullmq';
-
 import { PrismaService } from 'prisma.service';
-import { UsersModule } from 'users/users.module';
 import { SpacesModule } from 'spaces/spaces.module';
-import { AuthModule } from './auth/auth.module';
+import { UsersModule } from 'users/users.module';
 
 @Module({
 	controllers: [],
@@ -22,7 +20,6 @@ import { AuthModule } from './auth/auth.module';
 		}),
 		UsersModule,
 		SpacesModule,
-		AuthModule,
 	],
 })
 export class AppModule {}

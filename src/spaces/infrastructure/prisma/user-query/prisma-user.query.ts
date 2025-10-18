@@ -1,12 +1,11 @@
-import { PrismaService } from 'prisma.service';
-
-import { UserQuery } from 'users';
+import type { PrismaService } from 'prisma.service';
+import type { UserQuery } from 'users';
 
 export class PrismaUserQuery implements UserQuery {
-	constructor(private prismaService: PrismaService) {}
+	constructor(private prisma: PrismaService) {}
 
 	async findByIds(ids: string[]) {
-		const users = await this.prismaService.user.findMany({
+		const users = await this.prisma.user.findMany({
 			where: { id: { in: ids } },
 			select: { id: true, username: true, displayName: true },
 		});

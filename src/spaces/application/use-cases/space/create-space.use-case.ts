@@ -1,17 +1,36 @@
-import { Inject } from '@nestjs/common';
 import * as crypto from 'crypto';
 
-import { SpaceName } from '@spaces/domain/value-objects/space-name.vo';
 import { Space } from '@spaces/domain/space.entity';
+import { SpaceName } from '@spaces/domain/value-objects/space-name.vo';
+import { SpaceMember } from 'spaces/domain/space-member.entity';
 
-import { CreateSpaceCommand } from '@spaces/application/commands/space/create-space.command';
-import { SPACE_REPOSITORY } from '@spaces/application/ports/space/space.repository';
-import { SpaceRepository } from '@spaces/application/ports/space/space.repository';
+import {
+	SPACE_REPOSITORY,
+	SpaceRepository,
+} from '@spaces/application/ports/space/space.repository';
+import {
+	SPACE_MEMBER_REPOSITORY,
+	SpaceMemberRepository,
+} from '@spaces/application/ports/space-member/space-member.repository';
+
+import { Inject } from '@nestjs/common';
+
+type Cmd = {
+	name: string;
+	description?: string;
+	ownerId: string;
+};
 
 export class CreateSpaceUseCase {
-	constructor(@Inject(SPACE_REPOSITORY) private readonly spaceRepository: SpaceRepository) {}
+	constructor(
+		@Inject(SPACE_REPOSITORY)
+		private readonly spaceRepository: SpaceRepository,
 
-	async execute(cmd: CreateSpaceCommand): Promise<Space> {
+		@Inject(SPACE_MEMBER_REPOSITORY)
+		private readonly spaceMemberRepository: SpaceMemberRepository,
+	) {}
+
+	async execute(cmd: Cmd): Promise<Space> {
 		const nameVo = new SpaceName(cmd.name);
 		const space = new Space({
 			id: crypto.randomUUID(),
@@ -19,6 +38,11 @@ export class CreateSpaceUseCase {
 			description: cmd.description,
 			ownerId: cmd.ownerId,
 		});
-		return this.spaceRepository.create(space);
+		const spaceMember = new SpaceMember({ spaceId: space.id, userId: cmd.ownerId });
+
+		await this.spaceRepository.create(space);
+		await this.spaceMemberRepository.add(spaceMember);
+
+		return space;
 	}
 }

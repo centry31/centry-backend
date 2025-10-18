@@ -21,7 +21,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  MagicLink       MagicLink[]
+  LoginMagicLink  LoginMagicLink[]
   SpaceMember     SpaceMember[]
   Event           Event[]
   Space           Space[]           @relation("SpaceOwner")
@@ -112,7 +112,7 @@ model SpaceLinkCode {
   @@map("space_link_codes")
 }
 
-model MagicLink {
+model LoginMagicLink {
   id        String    @id @default(uuid())
   hashCode  String
   userId    String
@@ -121,7 +121,7 @@ model MagicLink {
   usedAt    DateTime?
   createdAt DateTime  @default(now())
 
-  @@map("magic_links")
+  @@map("login_magic_links")
 }
 
 model SpaceInviteCode {
