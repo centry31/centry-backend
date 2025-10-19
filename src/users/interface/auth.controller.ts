@@ -25,8 +25,8 @@ export class AuthController {
 	}
 
 	@Post('telegram')
-	async telegramAuth(@Body() telegramLoginDto: TelegramAuthDto) {
-		const token = await this.telegramAuthUseCase.execute(telegramLoginDto);
+	async telegramAuth(@Body() telegramAuthDto: TelegramAuthDto) {
+		const token = await this.telegramAuthUseCase.execute(telegramAuthDto);
 		return formatResponse(token, 'Авторизация через телеграм прошла успешно');
 	}
 }

@@ -8,11 +8,9 @@ import { USER_REPOSITORY, UserRepository } from '@users/application/ports/user/u
 
 import { Inject } from '@nestjs/common';
 
-const BOT_TOKEN = process.env.BOT_TOKEN;
-
 type Cmd = {
 	id: string;
-	auth_date: string;
+	auth_date: number;
 	hash: string;
 
 	first_name?: string;
@@ -38,6 +36,7 @@ export class TelegramAuthUseCase {
 	 * */
 	private validateTelegramPayload(cmd: Cmd) {
 		const { hash, ...rest } = cmd;
+		const BOT_TOKEN = process.env.BOT_TOKEN;
 
 		// 1) data_check_string
 		const dataCheckString = Object.entries(rest)

@@ -1,12 +1,24 @@
 import { IsInt, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class TelegramAuthDto {
-	@IsInt() id: string;
-	@IsNumber() auth_date: string;
-	@IsString() hash: string;
+	@IsInt()
+	id: string;
 
-	@IsOptional() @IsString() first_name?: string;
-	@IsOptional() @IsString() last_name?: string;
-	@IsOptional() @IsString() username?: string;
-	@IsOptional() @IsString() photo_url?: string;
+	@IsNumber()
+	auth_date: number;
+	@IsString()
+	hash: string;
+
+	@IsOptional()
+	@IsString()
+	first_name?: string;
+	@IsOptional()
+	@IsString()
+	last_name?: string;
+	@IsOptional()
+	@IsString()
+	username?: string;
+	@IsOptional()
+	@IsString()
+	photo_url?: string;
 }

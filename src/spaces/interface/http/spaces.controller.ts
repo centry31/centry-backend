@@ -58,9 +58,10 @@ export class SpacesController {
 	}
 
 	@Get(':spaceId')
-	async get(@Param('spaceId') spaceId: string) {
+	async get(@Param('spaceId') spaceId: string, @Request() req: AuthenticatedRequest) {
+		const { user } = req;
 		const space = await this.getSpaceUseCase.execute({ spaceId });
-		const response = toSpaceResponse(space);
+		const response = toSpaceResponse(space, user.id);
 		return formatResponse(response, 'Пространство получено');
 	}
 
