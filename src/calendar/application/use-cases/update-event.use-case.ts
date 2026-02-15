@@ -3,7 +3,14 @@ import * as crypto from 'crypto';
 import { EventReminder } from 'calendar/domain/event-reminder.entity';
 import { DateTime } from 'common/domain/value-objects/date-time.vo';
 
-import { EVENT_REPOSITORY, EventRepository } from 'calendar/application/ports/event.repository';
+import {
+	EVENT_REPOSITORY,
+	EventRepository,
+} from 'calendar/application/ports/event/event.repository';
+import {
+	REMINDER_SCHEDULER,
+	ReminderScheduler,
+} from 'calendar/application/ports/reminder-scheduler/reminder-scheduler.port';
 
 import { HttpException, HttpStatus, Inject, NotFoundException } from '@nestjs/common';
 import { runUseCase } from 'common/application/errors/run-use-case';
@@ -30,13 +37,19 @@ export class UpdateEventUseCase {
 
 		@Inject(SPACE_TG_CHAT_QUERY)
 		private readonly spaceTgChatQuery: SpaceTgChatQuery,
+
+		@Inject(REMINDER_SCHEDULER)
+		private readonly reminderScheduler: ReminderScheduler,
 	) {}
 
 	async execute(cmd: Cmd): Promise<void> {
 		return runUseCase(async () => {
-			const hasSpaceTgChats = await this.spaceTgChatQuery.hasBySpaceId(cmd.spaceId);
+			const activeTargets =
+				cmd.reminders.length > 0
+					? await this.spaceTgChatQuery.getActiveTargetsBySpaceId(cmd.spaceId)
+					: [];
 
-			if (cmd.reminders.length > 0 && !hasSpaceTgChats) {
+			if (cmd.reminders.length > 0 && activeTargets.length === 0) {
 				throw new HttpException(
 					'Для добавления напоминаний нужно привязать ТГ канал',
 					HttpStatus.BAD_REQUEST,
@@ -47,6 +60,7 @@ export class UpdateEventUseCase {
 			if (!event) {
 				throw new NotFoundException('Событие не найдено');
 			}
+			const previousReminderIds = event.reminders.map((reminder) => reminder.id);
 
 			const startVo = DateTime.fromDate(cmd.start);
 			const endVo = DateTime.fromDate(cmd.end);
@@ -70,6 +84,23 @@ export class UpdateEventUseCase {
 			reminders.forEach((reminder) => event.addReminder(reminder));
 
 			await this.eventRepository.update(event);
+
+			for (const reminderId of previousReminderIds) {
+				await this.reminderScheduler.unschedule(reminderId);
+			}
+
+			if (event.reminders.length > 0) {
+				for (const reminder of event.reminders) {
+					await this.reminderScheduler.schedule({
+						eventId: event.id,
+						eventTitle: event.title,
+						eventStartAt: event.start.value,
+						reminderId: reminder.id,
+						offsetMinutes: reminder.offsetMinutes,
+						targets: activeTargets,
+					});
+				}
+			}
 		});
 	}
 }

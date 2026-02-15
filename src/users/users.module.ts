@@ -21,7 +21,7 @@ import { PrismaModule } from 'prisma.module';
 		PrismaModule,
 		JwtModule.register({
 			// TODO: выставить через env
-			secret: process.env.SECRET_KEY || 'SECRET',
+			secret: process.env.JWT_SECRET_KEY || 'SECRET',
 			signOptions: {
 				expiresIn: '24h',
 			},

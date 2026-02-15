@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'prisma.service';
-import type { SpaceTgChatQuery } from 'spaces';
+import type { SpaceTgChatQuery, SpaceTgChatTarget } from 'spaces';
 
 @Injectable()
 export class PrismaSpaceTgChatQuery implements SpaceTgChatQuery {
@@ -12,5 +12,17 @@ export class PrismaSpaceTgChatQuery implements SpaceTgChatQuery {
 			select: { id: true },
 		});
 		return !!row;
+	}
+
+	async getActiveTargetsBySpaceId(spaceId: string): Promise<SpaceTgChatTarget[]> {
+		const rows = await this.prisma.spaceTgChat.findMany({
+			where: { spaceId, isActive: true },
+			select: { chatTgId: true, messageThreadId: true },
+		});
+
+		return rows.map((row) => ({
+			chatId: row.chatTgId.toString(),
+			messageThreadId: String(row.messageThreadId),
+		}));
 	}
 }

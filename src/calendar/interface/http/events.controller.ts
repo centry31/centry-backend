@@ -51,7 +51,7 @@ export class EventsController {
 			end: createEventDto.end,
 			createdById: user.id,
 			spaceId: currentSpaceId,
-			reminders: createEventDto.reminders,
+			reminders: createEventDto.reminders ?? [],
 		});
 		const response = toEventResponse(event);
 		return formatResponse(response, 'Напоминание создано');
@@ -71,7 +71,7 @@ export class EventsController {
 			description: updateEventDto.description,
 			start: updateEventDto.start,
 			end: updateEventDto.end,
-			reminders: updateEventDto.reminders,
+			reminders: updateEventDto.reminders ?? [],
 		});
 		return formatResponse(null, 'Событие обновлено');
 	}

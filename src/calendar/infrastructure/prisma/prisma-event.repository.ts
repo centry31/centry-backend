@@ -1,6 +1,6 @@
 import type { Event } from 'calendar/domain/event.entity';
 
-import type { EventRepository } from 'calendar/application/ports/event.repository';
+import type { EventRepository } from 'calendar/application/ports/event/event.repository';
 
 import { toEventDomain, toEventPersistence, toReminderPersistence } from './mappers';
 
@@ -85,5 +85,21 @@ export class PrismaEventRepository implements EventRepository {
 	async delete(id: string, spaceId: string): Promise<void> {
 		await this.prisma.event.delete({ where: { id, spaceId } });
 		// благодаря onDelete: Cascade на relation, reminders удалятся сами
+	}
+
+	async isReminderPending(reminderId: string): Promise<boolean> {
+		const row = await this.prisma.eventReminder.findFirst({
+			where: { id: reminderId, sentAt: null },
+			select: { id: true },
+		});
+
+		return !!row;
+	}
+
+	async markReminderSent(reminderId: string): Promise<void> {
+		await this.prisma.eventReminder.updateMany({
+			where: { id: reminderId, sentAt: null },
+			data: { sentAt: new Date() },
+		});
 	}
 }

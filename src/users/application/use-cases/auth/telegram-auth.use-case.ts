@@ -37,7 +37,7 @@ export class TelegramAuthUseCase {
 	 * */
 	private validateTelegramPayload(cmd: Cmd) {
 		const { hash, ...rest } = cmd;
-		const BOT_TOKEN = process.env.BOT_TOKEN;
+		const TG_BOT_TOKEN = process.env.TG_BOT_TOKEN;
 
 		// 1) data_check_string
 		const dataCheckString = Object.entries(rest)
@@ -47,7 +47,7 @@ export class TelegramAuthUseCase {
 			.join('\n');
 
 		// 2) secret_key = SHA256(bot_token)
-		const secretKey = crypto.createHash('sha256').update(BOT_TOKEN).digest();
+		const secretKey = crypto.createHash('sha256').update(TG_BOT_TOKEN).digest();
 
 		// 3) hmac(data_check_string, secret_key)
 		const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');

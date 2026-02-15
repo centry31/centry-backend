@@ -1,6 +1,9 @@
 import type { Event } from 'calendar/domain/event.entity';
 
-import { EVENT_REPOSITORY, EventRepository } from 'calendar/application/ports/event.repository';
+import {
+	EVENT_REPOSITORY,
+	EventRepository,
+} from 'calendar/application/ports/event/event.repository';
 
 import { Inject } from '@nestjs/common';
 import { runUseCase } from 'common/application/errors/run-use-case';
