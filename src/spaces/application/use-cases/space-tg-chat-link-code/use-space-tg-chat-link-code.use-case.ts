@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 
 import { DateTime } from 'common/domain/value-objects/date-time.vo';
 import { TelegramId as TgId } from 'common/domain/value-objects/telegram-id.vo';
@@ -21,7 +21,6 @@ import * as bcrypt from 'bcrypt';
 type Cmd = {
 	code: string;
 
-	spaceId: string;
 	chatId: string;
 	initiatedByTgId: string;
 	chatType: string;
@@ -66,7 +65,7 @@ export class UseSpaceTgChatLinkCodeUseCase {
 		const spaceTgChat = new SpaceTgChat({
 			id: crypto.randomUUID(),
 			title: cmd.title,
-			spaceId: cmd.spaceId,
+			spaceId: spaceTgChatLinkCode.spaceId,
 			chatId: chatIdVo,
 			initiatedByTgId: initiatedByTgIdVo,
 			messageThreadId: messageThreadIdVo,

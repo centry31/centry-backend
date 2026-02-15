@@ -31,7 +31,7 @@ import { JwtAuthGuard } from 'users';
 @Controller('spaces')
 export class SpacesController {
 	constructor(
-		private readonly createSpaceInviteCodeUseCase: CreateSpaceUseCase,
+		private readonly createSpaceUseCase: CreateSpaceUseCase,
 		private readonly getUserSpacesUseCase: GetUserSpacesUseCase,
 		private readonly getSpaceUseCase: GetSpaceUseCase,
 		private readonly updateSpaceUseCase: UpdateSpaceUseCase,
@@ -41,7 +41,7 @@ export class SpacesController {
 	@Post()
 	async create(@Body() createSpaceDto: CreateSpaceDto, @Request() req: AuthenticatedRequest) {
 		const { user } = req;
-		const space = await this.createSpaceInviteCodeUseCase.execute({
+		const space = await this.createSpaceUseCase.execute({
 			name: createSpaceDto.name,
 			description: createSpaceDto.description,
 			ownerId: user.id,

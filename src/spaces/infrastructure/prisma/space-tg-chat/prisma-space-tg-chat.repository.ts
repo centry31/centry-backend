@@ -11,6 +11,11 @@ import { PrismaService } from 'prisma.service';
 export class PrismaSpaceTgChatRepository implements SpaceTgChatRepository {
 	constructor(private readonly prisma: PrismaService) {}
 
+	async getManyBySpaceId(spaceId: string): Promise<SpaceTgChat[]> {
+		const rows = await this.prisma.spaceTgChat.findMany({ where: { spaceId } });
+		return rows.map((row) => toDomain(row));
+	}
+
 	async create(chat: SpaceTgChat): Promise<SpaceTgChat> {
 		const data = toPersistence(chat);
 		const row = await this.prisma.spaceTgChat.create({ data });

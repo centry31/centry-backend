@@ -11,6 +11,7 @@ import { GetInfoSpaceInviteCodeUseCase } from './application/use-cases/space-inv
 import { GetSpaceMembersUseCase } from './application/use-cases/space-member/get-space-members.use-case';
 import { LeaveSpaceUseCase } from './application/use-cases/space-member/leave-space.use-case';
 import { RemoveSpaceMemberUseCase } from './application/use-cases/space-member/remove-space-member.use-case';
+import { GetSpaceTgChatsUseCase } from './application/use-cases/space-tg-chat/get-space-tg-chats.use-case';
 import { CreateSpaceTgChatLinkCodeUseCase } from './application/use-cases/space-tg-chat-link-code/create-space-tg-chat-link-code.use-case';
 import { UseSpaceTgChatLinkCodeUseCase } from './application/use-cases/space-tg-chat-link-code/use-space-tg-chat-link-code.use-case';
 
@@ -29,6 +30,7 @@ import { PrismaUserQuery } from './infrastructure/prisma/user-query/prisma-user.
 
 import { SpaceInviteCodesController } from './interface/http/space-invite-codes.controller';
 import { SpaceMembersController } from './interface/http/space-members.controller';
+import { SpaceTgChatController } from './interface/http/space-tg-chat.controller';
 import { SpaceTgChatLinksController } from './interface/http/space-tg-chat-links.controller';
 import { SpacesController } from './interface/http/spaces.controller';
 
@@ -43,6 +45,7 @@ import { USER_QUERY, UsersModule } from 'users';
 		SpaceMembersController,
 		SpaceInviteCodesController,
 		SpaceTgChatLinksController,
+		SpaceTgChatController,
 	],
 	providers: [
 		CreateSpaceUseCase,
@@ -63,6 +66,8 @@ import { USER_QUERY, UsersModule } from 'users';
 		GetInfoSpaceInviteCodeUseCase,
 		GetActiveSpaceInviteCodesUseCase,
 		DeleteSpaceInviteCodeUseCase,
+
+		GetSpaceTgChatsUseCase,
 
 		{ provide: SPACE_REPOSITORY, useClass: PrismaSpaceRepository },
 		{ provide: SPACE_MEMBER_REPOSITORY, useClass: PrismaSpaceMemberRepository },

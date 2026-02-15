@@ -1,21 +1,18 @@
 import { TgChatType } from '@prisma/client';
-import { Type } from 'class-transformer';
 import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
-export class AddSpaceTgChatDto {
+export class UseSpaceTgChatLinkCodeDto {
 	@IsString()
 	@IsNotEmpty()
 	hashCode: string; // id.secret
 
 	@IsString()
 	@IsNotEmpty()
-	@Type(() => BigInt)
-	chatTgId: bigint;
+	chatTgId: string;
 
 	@IsString()
 	@IsNotEmpty()
-	@Type(() => BigInt)
-	initiatedByTgId: bigint; // кто вызвал команду
+	initiatedByTgId: string; // кто вызвал команду
 
 	@IsString()
 	@IsNotEmpty()

@@ -21,6 +21,7 @@ export class RemoveSpaceMemberUseCase {
 	constructor(
 		@Inject(SPACE_MEMBER_REPOSITORY)
 		private readonly spaceMemberRepository: SpaceMemberRepository,
+
 		@Inject(SPACE_REPOSITORY)
 		private readonly spaceRepository: SpaceRepository,
 	) {}
