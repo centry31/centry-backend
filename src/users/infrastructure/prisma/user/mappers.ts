@@ -1,5 +1,5 @@
+import { TelegramId as TgId } from 'common/domain/value-objects/telegram-id.vo';
 import { User } from 'users/domain/user.entity';
-import { TgId } from 'users/domain/value-objests/tg-id.vo';
 
 type Row = {
 	id: string;
@@ -20,8 +20,8 @@ export const toDomain = (r: Row): User =>
 
 export const toPersistence = (u: User): Row => ({
 	id: u.id,
-	tgId: BigInt(u.tgId.value),
-	chatId: u.chatId ? BigInt(u.chatId.value) : null,
+	tgId: u.tgId.toBigInt(),
+	chatId: u.chatId ? u.chatId.toBigInt() : null,
 	username: u.username ?? null,
-	displayName: u._displayName,
+	displayName: u.displayName,
 });

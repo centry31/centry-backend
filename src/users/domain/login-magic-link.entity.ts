@@ -1,14 +1,15 @@
-import { DateTime } from './value-objests/date-time.vo';
+import { DateTime } from 'common/domain/value-objects/date-time.vo';
+
 import type { HashCode } from './value-objests/hash-code.vo';
 
-interface MagicLinkProps {
+type LoginMagicLinkProps = {
 	id: string;
 	hashCode: HashCode;
 	userId: string;
 	expiresAt: DateTime;
 	usedAt?: DateTime;
 	createdAt: DateTime;
-}
+};
 
 export class LoginMagicLink {
 	public readonly id: string;
@@ -19,24 +20,25 @@ export class LoginMagicLink {
 
 	private _usedAt?: DateTime;
 
-	constructor(props: MagicLinkProps) {
+	constructor(props: LoginMagicLinkProps) {
 		this.id = props.id;
 		this.hashCode = props.hashCode;
 		this.userId = props.userId;
 		this.expiresAt = props.expiresAt;
 		this.createdAt = props.createdAt;
+		this._usedAt = props.usedAt;
 
-		if (props.usedAt) {
-			this._usedAt = props.usedAt;
+		if (this.expiresAt.isSameOrBefore(this.createdAt)) {
+			throw new Error('expiresAt must be after createdAt');
 		}
 	}
 
-	get usedAt(): Date | undefined {
-		return this._usedAt?.value;
+	get usedAt(): DateTime | undefined {
+		return this._usedAt;
 	}
 
 	isExpired(now: DateTime = DateTime.now()): boolean {
-		return now.isBefore(this.expiresAt) === false;
+		return now.isSameOrAfter(this.expiresAt);
 	}
 
 	canBeUsed(now: DateTime = DateTime.now()): boolean {

@@ -1,5 +1,6 @@
+import type { DateTime } from 'common/domain/value-objects/date-time.vo';
+
 import type { EventReminder } from './event-reminder.entity';
-import type { DateTime } from './value-objects/date-time.vo';
 
 type EventProps = {
 	id: string;
@@ -31,58 +32,66 @@ export class Event {
 		this.createdById = props.createdById;
 		this.createdAt = props.createdAt;
 
-		this._title = props.title.trim();
+		this._title = this.normalizeTitle(props.title);
 		this._description = props.description;
 		this._start = props.start;
 		this._end = props.end;
-		this._reminders = props.reminders ?? [];
+		this._reminders = props.reminders ? props.reminders.slice() : [];
 
 		this.ensureStartBeforeEnd();
 		this.ensureRemindersCoherent();
 	}
 
-	// === getters
-	get title() {
+	get title(): string {
 		return this._title;
 	}
-	get description() {
+
+	get description(): string | undefined {
 		return this._description;
 	}
-	get start() {
+
+	get start(): DateTime {
 		return this._start;
 	}
-	get end() {
+
+	get end(): DateTime {
 		return this._end;
 	}
+
 	get reminders(): readonly EventReminder[] {
 		return this._reminders;
 	}
 
-	// === invariants
-	private ensureStartBeforeEnd() {
+	private normalizeTitle(title: string): string {
+		const normalizedTitle = title.trim();
+		if (!normalizedTitle) {
+			throw new Error('Title cannot be empty');
+		}
+
+		return normalizedTitle;
+	}
+
+	private ensureStartBeforeEnd(): void {
 		if (!this._start.isBefore(this._end)) {
 			throw new Error('Event.start must be strictly before Event.end');
 		}
 	}
 
-	private ensureRemindersCoherent() {
+	private ensureRemindersCoherent(): void {
 		for (const r of this._reminders) {
 			r.ensureCoherentWith(this._start);
 		}
 	}
 
-	// === mutations
-	changeTitle(title: string) {
-		const t = title.trim();
-		if (!t) throw new Error('Title cannot be empty');
-		this._title = t;
+	changeTitle(title: string): void {
+		this._title = this.normalizeTitle(title);
 	}
 
-	changeDescription(desc?: string) {
+	changeDescription(desc?: string): void {
 		this._description = desc;
 	}
 
-	changeStart(start: DateTime) {
+	changeStart(start: DateTime): void {
 		if (!start.isBefore(this._end)) {
 			throw new Error('start must be before end');
 		}
@@ -91,28 +100,28 @@ export class Event {
 		this._reminders = this._reminders.map((r) => r.recalculateFor(start));
 	}
 
-	changeEnd(end: DateTime) {
+	changeEnd(end: DateTime): void {
 		if (!this._start.isBefore(end)) {
 			throw new Error('end must be after start');
 		}
 		this._end = end;
 	}
 
-	addReminder(rem: EventReminder) {
+	addReminder(rem: EventReminder): void {
 		rem.ensureCoherentWith(this._start);
 		this._reminders.push(rem);
 	}
 
-	replaceReminders(reminders: EventReminder[]) {
+	replaceReminders(reminders: EventReminder[]): void {
 		for (const r of reminders) r.ensureCoherentWith(this._start);
 		this._reminders = reminders.slice();
 	}
 
-	removeReminder(reminderId: string) {
+	removeReminder(reminderId: string): void {
 		this._reminders = this._reminders.filter((r) => r.id !== reminderId);
 	}
 
-	clearReminders() {
+	clearReminders(): void {
 		this._reminders = [];
 	}
 }

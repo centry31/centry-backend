@@ -41,7 +41,7 @@ export class LoginWithMagicLinkUseCase {
 		}
 
 		const loginMagicLink = await this.loginMagicLinkRepository.findById(id);
-		if (!magicLink) {
+		if (!loginMagicLink) {
 			throw new LoginMagicLinkNotFoundError();
 		}
 		if (!loginMagicLink.canBeUsed()) {

@@ -1,9 +1,13 @@
 export class MessageThreadId {
-	private constructor(public readonly value: number) {}
+	private constructor(public readonly value: number) {
+		Object.freeze(this);
+	}
 
 	static from(n?: number): MessageThreadId {
 		if (!n) return this.root();
-		if (!Number.isInteger(n) || n < 0) throw new Error('messageThreadId must be integer >= 0');
+		if (!Number.isInteger(n) || n < 0) {
+			throw new Error('messageThreadId must be integer >= 0');
+		}
 		return new MessageThreadId(n);
 	}
 

@@ -1,7 +1,8 @@
-import { DateTime } from './value-objects/date-time.vo';
+import { DateTime } from 'common/domain/value-objects/date-time.vo';
+
 import type { ExpiresAt } from './value-objects/expires-at.vo';
 
-type Props = {
+type SpaceTgChatLinkCodeProps = {
 	id: string;
 	spaceId: string;
 	hashCode: string;
@@ -24,9 +25,24 @@ export class SpaceTgChatLinkCode {
 
 	private _usedAt?: DateTime;
 	private _maxUses: number;
-	private _usedCount?: number;
+	private _usedCount: number;
 
-	constructor(props: Props) {
+	constructor(props: SpaceTgChatLinkCodeProps) {
+		if (!props.hashCode.trim()) {
+			throw new Error('hashCode cannot be empty');
+		}
+		if (props.maxUses < 1) {
+			throw new Error('maxUses must be greater than 0');
+		}
+
+		const usedCount = props.usedCount ?? 0;
+		if (usedCount < 0) {
+			throw new Error('usedCount cannot be negative');
+		}
+		if (usedCount > props.maxUses) {
+			throw new Error('usedCount cannot exceed maxUses');
+		}
+
 		this.id = props.id;
 		this.spaceId = props.spaceId;
 		this.hashCode = props.hashCode;
@@ -36,39 +52,42 @@ export class SpaceTgChatLinkCode {
 
 		this._usedAt = props.usedAt;
 		this._maxUses = props.maxUses;
-		this._usedCount = props.usedCount ?? 0;
+		this._usedCount = usedCount;
 	}
 
-	get usedAt() {
+	get usedAt(): DateTime | undefined {
 		return this._usedAt;
 	}
-	get maxUses() {
+	get maxUses(): number {
 		return this._maxUses;
 	}
-	get usedCount() {
+	get usedCount(): number {
 		return this._usedCount;
 	}
 
-	canBeUsed(): boolean {
+	canBeUsed(now: DateTime = DateTime.now()): boolean {
 		if (this._usedCount >= this._maxUses) {
 			return false;
 		}
-		if (this.expiresAt.isExpired()) {
+		if (this.expiresAt.isExpired(now)) {
 			return false;
 		}
+		if (this._usedAt) {
+			return false;
+		}
+
 		return true;
 	}
 
-	use(): void {
-		if (!this.canBeUsed()) {
-			// TODO: заменить на доменную
-			throw new Error('Все!');
+	use(now: DateTime = DateTime.now()): void {
+		if (!this.canBeUsed(now)) {
+			throw new Error('Cannot mark used: already used or expired');
 		}
 
 		this._usedCount += 1;
 
 		if (this._usedCount >= this.maxUses) {
-			this._usedAt = DateTime.now();
+			this._usedAt = now;
 		}
 	}
 }

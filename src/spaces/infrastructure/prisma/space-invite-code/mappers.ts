@@ -1,7 +1,7 @@
 import { SpaceInviteCode } from '@spaces/domain/space-invite-code.entity';
-import { DateTime } from '@spaces/domain/value-objects/date-time.vo';
 import { ExpiresAt } from '@spaces/domain/value-objects/expires-at.vo';
 import { InviteCode } from '@spaces/domain/value-objects/invite-code.vo';
+import { DateTime } from 'common/domain/value-objects/date-time.vo';
 
 type Row = {
 	code: string;

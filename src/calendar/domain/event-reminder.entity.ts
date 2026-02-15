@@ -1,10 +1,10 @@
-import { DateTime } from './value-objects/date-time.vo';
+import { DateTime } from 'common/domain/value-objects/date-time.vo';
 
-type ReminderProps = {
+type EventReminderProps = {
 	id: string;
 	eventId: string;
-	offsetMinutes: number; // >= 0
-	scheduledAt?: DateTime; // если хотим хранить абсолютный момент, иначе вычисляем на лету
+	offsetMinutes: number;
+	scheduledAt?: DateTime;
 	sentAt?: DateTime;
 	createdAt: DateTime;
 	updatedAt: DateTime;
@@ -20,8 +20,10 @@ export class EventReminder {
 	private _scheduledAt?: DateTime;
 	private _sentAt?: DateTime;
 
-	constructor(props: ReminderProps) {
-		if (props.offsetMinutes < 0) throw new Error('offsetMinutes must be >= 0');
+	constructor(props: EventReminderProps) {
+		if (props.offsetMinutes < 0) {
+			throw new Error('offsetMinutes must be >= 0');
+		}
 
 		this.id = props.id;
 		this.eventId = props.eventId;
@@ -35,29 +37,23 @@ export class EventReminder {
 	get scheduledAt(): DateTime | undefined {
 		return this._scheduledAt;
 	}
+
 	get sentAt(): DateTime | undefined {
 		return this._sentAt;
 	}
 
-	/** Проверка консистентности с началом события */
-	ensureCoherentWith(eventStart: DateTime) {
-		// если scheduledAt храним — оно должно совпадать с (start - offset)
+	ensureCoherentWith(eventStart: DateTime): void {
 		if (this._scheduledAt) {
-			const expected = DateTime.fromMillis(
-				eventStart.value.getTime() - this.offsetMinutes * 60_000,
-			);
-			if (this._scheduledAt.value.getTime() !== expected.value.getTime()) {
-				// можно пересчитать вместо throw — зависит от политики
+			const expected = eventStart.addMinutes(-this.offsetMinutes);
+			if (!this._scheduledAt.isSame(expected)) {
 				throw new Error('scheduledAt does not match eventStart - offset');
 			}
 		}
 	}
 
-	/** Пересчёт scheduledAt при смещении start */
 	recalculateFor(eventStart: DateTime): EventReminder {
-		const scheduled = DateTime.fromMillis(
-			eventStart.value.getTime() - this.offsetMinutes * 60_000,
-		);
+		const scheduled = eventStart.addMinutes(-this.offsetMinutes);
+
 		return new EventReminder({
 			id: this.id,
 			eventId: this.eventId,
@@ -69,8 +65,10 @@ export class EventReminder {
 		});
 	}
 
-	markSent(now: DateTime = DateTime.now()) {
-		if (this._sentAt) throw new Error('Reminder already sent');
+	markSent(now: DateTime = DateTime.now()): void {
+		if (this._sentAt) {
+			throw new Error('Reminder already sent');
+		}
 		this._sentAt = now;
 	}
 }

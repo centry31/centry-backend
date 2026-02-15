@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 
 import { User } from '@users/domain/user.entity';
-import { TgId } from '@users/domain/value-objests/tg-id.vo';
+import { TelegramId as TgId } from 'common/domain/value-objects/telegram-id.vo';
 
 import { USER_REPOSITORY, UserRepository } from '@users/application/ports/user/user.repository';
 

@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 
 import { EventReminder } from 'calendar/domain/event-reminder.entity';
-import { DateTime } from 'calendar/domain/value-objects/date-time.vo';
+import { DateTime } from 'common/domain/value-objects/date-time.vo';
 
 import { EVENT_REPOSITORY, EventRepository } from 'calendar/application/ports/event.repository';
 

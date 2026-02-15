@@ -1,6 +1,6 @@
 import { LoginMagicLink } from '@users/domain/login-magic-link.entity';
-import { DateTime } from '@users/domain/value-objests/date-time.vo';
 import { HashCode } from '@users/domain/value-objests/hash-code.vo';
+import { DateTime } from 'common/domain/value-objects/date-time.vo';
 
 type Row = {
 	id: string;
@@ -8,7 +8,7 @@ type Row = {
 	hashCode: string;
 	createdAt: Date;
 	expiresAt: Date;
-	usedAt?: Date;
+	usedAt: Date | null;
 };
 
 export const toDomain = (row: Row) =>
@@ -16,9 +16,9 @@ export const toDomain = (row: Row) =>
 		id: row.id,
 		userId: row.userId,
 		hashCode: new HashCode(row.hashCode),
-		createdAt: new DateTime(row.createdAt),
-		expiresAt: new DateTime(row.expiresAt),
-		usedAt: new DateTime(row.usedAt),
+		createdAt: DateTime.fromDate(row.createdAt),
+		expiresAt: DateTime.fromDate(row.expiresAt),
+		usedAt: row.usedAt ? DateTime.fromDate(row.usedAt) : undefined,
 	});
 
 export const toPersistence = (loginMagicLink: LoginMagicLink): Row => ({
@@ -27,5 +27,5 @@ export const toPersistence = (loginMagicLink: LoginMagicLink): Row => ({
 	hashCode: loginMagicLink.hashCode.value,
 	createdAt: loginMagicLink.createdAt.value,
 	expiresAt: loginMagicLink.expiresAt.value,
-	usedAt: loginMagicLink.usedAt,
+	usedAt: loginMagicLink.usedAt?.value ?? null,
 });

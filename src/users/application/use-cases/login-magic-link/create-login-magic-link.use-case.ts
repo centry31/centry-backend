@@ -1,8 +1,8 @@
 import { randomBytes } from 'crypto';
 
 import { LoginMagicLink } from '@users/domain/login-magic-link.entity';
-import { DateTime } from '@users/domain/value-objests/date-time.vo';
 import { HashCode } from '@users/domain/value-objests/hash-code.vo';
+import { DateTime } from 'common/domain/value-objects/date-time.vo';
 
 import {
 	LOGIN_MAGIC_LINK_REPOSITORY,

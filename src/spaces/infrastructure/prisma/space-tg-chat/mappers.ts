@@ -1,8 +1,8 @@
 import { SpaceTgChat } from '@spaces/domain/space-tg-chat.entity';
-import { DateTime } from '@spaces/domain/value-objects/date-time.vo';
 import { MessageThreadId } from '@spaces/domain/value-objects/message-thread-id.vo';
-import { TgId } from '@spaces/domain/value-objects/tg-chat-id.vo';
 import type { TgChatType } from '@spaces/domain/value-objects/tg-chat-type.vo';
+import { DateTime } from 'common/domain/value-objects/date-time.vo';
+import { TelegramId as TgId } from 'common/domain/value-objects/telegram-id.vo';
 
 type SpaceTgChatRow = {
 	id: string;
@@ -41,20 +41,22 @@ export const toDomain = (row: SpaceTgChatRow): SpaceTgChat => {
 };
 
 export const toPersistence = (chat: SpaceTgChat): SpaceTgChatRow => {
+	const now = DateTime.now().value;
+
 	return {
 		id: chat.id,
 		spaceId: chat.spaceId,
 
-		chatTgId: chat.chatId.value,
+		chatTgId: chat.chatId.toBigInt(),
 		chatType: chat.type,
 		chatTitle: chat.title ?? null,
 
 		messageThreadId: chat.messageThreadId.value,
 
-		initiatedByTgId: chat.initiatedByTgId.value,
+		initiatedByTgId: chat.initiatedByTgId.toBigInt(),
 		isActive: chat.isActive,
 
-		createdAt: chat.createdAt.value,
-		updatedAt: chat.updatedAt.value,
+		createdAt: chat.createdAt?.value ?? now,
+		updatedAt: chat.updatedAt?.value ?? now,
 	};
 };

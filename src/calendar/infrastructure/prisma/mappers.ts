@@ -1,6 +1,6 @@
 import { Event } from 'calendar/domain/event.entity';
 import { EventReminder } from 'calendar/domain/event-reminder.entity';
-import { DateTime } from 'calendar/domain/value-objects/date-time.vo';
+import { DateTime } from 'common/domain/value-objects/date-time.vo';
 
 export type EventRow = {
 	id: string;

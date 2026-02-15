@@ -19,22 +19,23 @@ export class Space {
 		this.ownerId = props.ownerId;
 
 		this._name = props.name;
-		this._description = props.description;
+		this.changeDescription(props.description);
 	}
 
-	// getters
-	get name() {
+	get name(): SpaceName {
 		return this._name;
 	}
-	get description() {
+
+	get description(): string | undefined {
 		return this._description;
 	}
 
-	// базовые операции
-	rename(newName: string) {
+	rename(newName: string): void {
 		this._name = new SpaceName(newName);
 	}
-	changeDescription(newDesc?: string) {
-		this._description = newDesc;
+
+	changeDescription(newDescription?: string): void {
+		const normalizedDescription = newDescription?.trim();
+		this._description = normalizedDescription ? normalizedDescription : undefined;
 	}
 }
