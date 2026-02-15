@@ -6,5 +6,4 @@ export interface SpaceMemberRepository {
 	add(member: SpaceMember): Promise<void>;
 	remove(userId: string, spaceId: string): Promise<void>;
 }
-
 export const SPACE_MEMBER_REPOSITORY = Symbol('SPACE_MEMBER_REPOSITORY');

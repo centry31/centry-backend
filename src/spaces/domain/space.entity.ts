@@ -1,22 +1,40 @@
 import { SpaceName } from './value-objects/space-name.vo';
 
+type Props = {
+	id: string;
+	name: SpaceName;
+	ownerId: string;
+	description?: string;
+};
+
 export class Space {
 	public readonly id: string;
-	public name: SpaceName;
-	public description?: string;
 	public readonly ownerId: string;
 
-	constructor(props: { id: string; name: SpaceName; ownerId: string; description?: string }) {
+	private _name: SpaceName;
+	private _description?: string;
+
+	constructor(props: Props) {
 		this.id = props.id;
-		this.name = props.name;
-		this.description = props.description;
 		this.ownerId = props.ownerId;
+
+		this._name = props.name;
+		this._description = props.description;
 	}
 
+	// getters
+	get name() {
+		return this._name;
+	}
+	get description() {
+		return this._description;
+	}
+
+	// базовые операции
 	rename(newName: string) {
-		this.name = new SpaceName(newName);
+		this._name = new SpaceName(newName);
 	}
 	changeDescription(newDesc?: string) {
-		this.description = newDesc;
+		this._description = newDesc;
 	}
 }

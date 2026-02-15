@@ -26,8 +26,8 @@ export class CreateEventUseCase {
 	constructor(@Inject(EVENT_REPOSITORY) private readonly eventRepository: EventRepository) {}
 
 	async execute(cmd: Cmd): Promise<Event> {
-		const startVo = new DateTime(cmd.start);
-		const endVo = new DateTime(cmd.end);
+		const startVo = DateTime.fromDate(cmd.start);
+		const endVo = DateTime.fromDate(cmd.end);
 		const createdAtVo = DateTime.now();
 
 		const event = new Event({

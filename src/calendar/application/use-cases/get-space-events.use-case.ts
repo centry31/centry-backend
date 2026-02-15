@@ -12,6 +12,6 @@ export class GetSpaceEventsUseCase {
 	constructor(@Inject(EVENT_REPOSITORY) private readonly eventRepository: EventRepository) {}
 
 	async execute(cmd: Cmd): Promise<Event[]> {
-		return this.eventRepository.findManyBySpaceIdWithReminders(cmd.spaceId);
+		return this.eventRepository.findManyBySpaceId(cmd.spaceId);
 	}
 }

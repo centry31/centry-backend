@@ -25,6 +25,6 @@ export class UpdateSpaceUseCase {
 			name: new SpaceName(cmd.name),
 			description: cmd.description,
 		});
-		await this.spaceRepository.update(space);
+		await this.spaceRepository.updateInfo(space);
 	}
 }

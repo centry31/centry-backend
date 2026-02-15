@@ -11,18 +11,25 @@ import { GetInfoSpaceInviteCodeUseCase } from './application/use-cases/space-inv
 import { GetSpaceMembersUseCase } from './application/use-cases/space-member/get-space-members.use-case';
 import { LeaveSpaceUseCase } from './application/use-cases/space-member/leave-space.use-case';
 import { RemoveSpaceMemberUseCase } from './application/use-cases/space-member/remove-space-member.use-case';
+import { CreateSpaceTgChatLinkCodeUseCase } from './application/use-cases/space-tg-chat-link-code/create-space-tg-chat-link-code.use-case';
+import { UseSpaceTgChatLinkCodeUseCase } from './application/use-cases/space-tg-chat-link-code/use-space-tg-chat-link-code.use-case';
 
 import { SPACE_REPOSITORY } from './application/ports/space/space.repository';
 import { SPACE_INVITE_CODE_REPOSITORY } from './application/ports/space-invite-code/space-invite-code.repository';
 import { SPACE_MEMBER_REPOSITORY } from './application/ports/space-member/space-member.repository';
+import { SPACE_TG_CHAT_REPOSITORY } from './application/ports/space-tg-chat/space-tg-chat.repository';
+import { SPACE_TG_CHAT_LINK_CODE_REPOSITORY } from './application/ports/space-tg-chat-link-code/space-tg-chat-link-code.repository';
 
 import { PrismaSpaceRepository } from './infrastructure/prisma/space/prisma-space.repository';
 import { PrismaSpaceInviteCodesRepository } from './infrastructure/prisma/space-invite-code/prisma-space-invite-codes.repository';
 import { PrismaSpaceMemberRepository } from './infrastructure/prisma/space-member/prisma-space-member.repository';
+import { PrismaSpaceTgChatRepository } from './infrastructure/prisma/space-tg-chat/prisma-space-tg-chat.repository';
+import { PrismaSpaceTgChatLinkCodeRepository } from './infrastructure/prisma/space-tg-chat-link-code/prisma-space-tg-chat-link-code.repository';
 import { PrismaUserQuery } from './infrastructure/prisma/user-query/prisma-user.query';
 
 import { SpaceInviteCodesController } from './interface/http/space-invite-codes.controller';
 import { SpaceMembersController } from './interface/http/space-members.controller';
+import { SpaceTgChatLinksController } from './interface/http/space-tg-chat-links.controller';
 import { SpacesController } from './interface/http/spaces.controller';
 
 import { Module } from '@nestjs/common';
@@ -31,13 +38,21 @@ import { USER_QUERY, UsersModule } from 'users';
 
 @Module({
 	imports: [PrismaModule, UsersModule],
-	controllers: [SpacesController, SpaceMembersController, SpaceInviteCodesController],
+	controllers: [
+		SpacesController,
+		SpaceMembersController,
+		SpaceInviteCodesController,
+		SpaceTgChatLinksController,
+	],
 	providers: [
 		CreateSpaceUseCase,
 		GetUserSpacesUseCase,
 		GetSpaceUseCase,
 		UpdateSpaceUseCase,
 		DeleteSpaceUseCase,
+
+		CreateSpaceTgChatLinkCodeUseCase,
+		UseSpaceTgChatLinkCodeUseCase,
 
 		RemoveSpaceMemberUseCase,
 		LeaveSpaceUseCase,
@@ -52,6 +67,11 @@ import { USER_QUERY, UsersModule } from 'users';
 		{ provide: SPACE_REPOSITORY, useClass: PrismaSpaceRepository },
 		{ provide: SPACE_MEMBER_REPOSITORY, useClass: PrismaSpaceMemberRepository },
 		{ provide: SPACE_INVITE_CODE_REPOSITORY, useClass: PrismaSpaceInviteCodesRepository },
+		{
+			provide: SPACE_TG_CHAT_LINK_CODE_REPOSITORY,
+			useClass: PrismaSpaceTgChatLinkCodeRepository,
+		},
+		{ provide: SPACE_TG_CHAT_REPOSITORY, useClass: PrismaSpaceTgChatRepository },
 		{ provide: USER_QUERY, useClass: PrismaUserQuery },
 	],
 	exports: [],

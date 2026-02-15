@@ -25,7 +25,7 @@ export class UpdateEventUseCase {
 	constructor(@Inject(EVENT_REPOSITORY) private readonly eventRepository: EventRepository) {}
 
 	async execute(cmd: Cmd): Promise<void> {
-		const event = await this.eventRepository.findByIdWithReminders(cmd.eventId, cmd.spaceId);
+		const event = await this.eventRepository.findByIdWithSpaceId(cmd.eventId, cmd.spaceId);
 
 		const startVo = DateTime.fromDate(cmd.start);
 		const endVo = DateTime.fromDate(cmd.end);

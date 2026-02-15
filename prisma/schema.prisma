@@ -21,12 +21,12 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  LoginMagicLink  LoginMagicLink[]
-  SpaceMember     SpaceMember[]
-  Event           Event[]
-  Space           Space[]           @relation("SpaceOwner")
-  SpaceLinkCode   SpaceLinkCode[]
-  SpaceInviteCode SpaceInviteCode[]
+  loginMagicLinks      LoginMagicLink[]
+  spaceMembers         SpaceMember[]
+  events               Event[]
+  spaces               Space[]               @relation("SpaceOwner")
+  spaceTgChatLinkCodes SpaceTgChatLinkCode[]
+  spaceInviteCodes     SpaceInviteCode[]
 
   @@map("users")
 }
@@ -35,14 +35,14 @@ model Space {
   id          String  @id @default(uuid())
   name        String
   description String?
-  owner       User    @relation("SpaceOwner", fields: [ownerID], references: [id])
-  ownerID     String
+  owner       User    @relation("SpaceOwner", fields: [ownerId], references: [id])
+  ownerId     String
 
-  SpaceMember     SpaceMember[]
-  event           Event[]
-  SpaceTgChat     SpaceTgChat[]
-  SpaceLinkCode   SpaceLinkCode[]
-  SpaceInviteCode SpaceInviteCode[]
+  spaceMembers         SpaceMember[]
+  events               Event[]
+  spaceTgChats         SpaceTgChat[]
+  spaceTgChatLinkCodes SpaceTgChatLinkCode[]
+  spaceInviteCodes     SpaceInviteCode[]
 
   @@map("spaces")
 }
@@ -89,7 +89,7 @@ model SpaceTgChat {
   @@map("space_tg_chats")
 }
 
-model SpaceLinkCode {
+model SpaceTgChatLinkCode {
   id      String @id @default(uuid())
   spaceId String
   space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
@@ -109,7 +109,7 @@ model SpaceLinkCode {
   @@index([spaceId])
   @@index([expiresAt])
   @@index([createdByUserId])
-  @@map("space_link_codes")
+  @@map("space_tg_chat_link_codes")
 }
 
 model LoginMagicLink {

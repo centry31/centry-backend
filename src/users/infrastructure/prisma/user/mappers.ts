@@ -23,5 +23,5 @@ export const toPersistence = (u: User): Row => ({
 	tgId: BigInt(u.tgId.value),
 	chatId: u.chatId ? BigInt(u.chatId.value) : null,
 	username: u.username ?? null,
-	displayName: u.displayName,
+	displayName: u._displayName,
 });

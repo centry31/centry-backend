@@ -9,5 +9,5 @@ type UserResponse = {
 export const toUserResponse = (user: User): UserResponse => ({
 	id: user.id,
 	username: user.username,
-	displayName: user.displayName,
+	displayName: user._displayName,
 });

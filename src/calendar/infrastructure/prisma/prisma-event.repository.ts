@@ -11,40 +11,20 @@ import { PrismaService } from 'prisma.service';
 export class PrismaEventRepository implements EventRepository {
 	constructor(private readonly prisma: PrismaService) {}
 
-	async findById(id: string): Promise<Event | null> {
-		const row = await this.prisma.event.findUnique({
-			where: { id },
-		});
-		return row ? toEventDomain(row) : null;
-	}
-
-	async findByIdWithReminders(id: string, spaceId: string): Promise<Event | null> {
+	async findByIdWithSpaceId(id: string, spaceId: string): Promise<Event> {
 		const row = await this.prisma.event.findUnique({
 			where: { id, spaceId },
-			include: {
-				reminders: true,
-			},
+			include: { reminders: true },
 		});
-		if (!row) return null;
-		return toEventDomain(row, row.reminders ?? []);
+		return row ? toEventDomain(row, row.reminders) : null;
 	}
 
 	async findManyBySpaceId(spaceId: string): Promise<Event[]> {
 		const rows = await this.prisma.event.findMany({
 			where: { spaceId },
-			orderBy: { start: 'asc' },
+			include: { reminders: true },
 		});
-		return rows.map((r) => toEventDomain(r));
-	}
-
-	async findManyBySpaceIdWithReminders(spaceId: string): Promise<Event[]> {
-		const rows = await this.prisma.event.findMany({
-			where: { spaceId },
-			include: {
-				reminders: true,
-			},
-		});
-		return rows.map((r) => toEventDomain(r, r.reminders ?? []));
+		return rows.map((row) => toEventDomain(row, row.reminders));
 	}
 
 	async create(event: Event): Promise<Event> {
@@ -55,7 +35,7 @@ export class PrismaEventRepository implements EventRepository {
 
 			if (event.reminders.length) {
 				await tx.eventReminder.createMany({
-					data: event.reminders.map((r) => toReminderPersistence(r, event.id)),
+					data: event.reminders.map((r) => toReminderPersistence(r)),
 					skipDuplicates: true,
 				});
 			}
@@ -66,7 +46,7 @@ export class PrismaEventRepository implements EventRepository {
 			include: { reminders: true },
 		});
 		if (!row) return null;
-		return toEventDomain(row);
+		return toEventDomain(row, row.reminders);
 	}
 
 	async update(event: Event): Promise<void> {
@@ -95,7 +75,7 @@ export class PrismaEventRepository implements EventRepository {
 
 			if (event.reminders.length) {
 				await tx.eventReminder.createMany({
-					data: event.reminders.map((r) => toReminderPersistence(r, event.id)),
+					data: event.reminders.map((r) => toReminderPersistence(r)),
 					skipDuplicates: true,
 				});
 			}

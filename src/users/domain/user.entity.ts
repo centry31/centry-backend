@@ -3,9 +3,10 @@ import type { TgId } from './value-objests/tg-id.vo';
 export class User {
 	public readonly id: string;
 	public readonly tgId: TgId;
-	public displayName: string;
-	public username?: string;
-	public chatId?: TgId;
+
+	public _displayName: string;
+	public _username?: string;
+	public _chatId?: TgId;
 
 	constructor(props: {
 		id: string;
@@ -16,11 +17,22 @@ export class User {
 	}) {
 		this.id = props.id;
 		this.tgId = props.tgId;
-		this.displayName = props.displayName.trim();
-		if (this.displayName.length === 0) {
+
+		this._displayName = props.displayName.trim();
+		if (this._displayName.length === 0) {
 			throw new Error('Display name cannot be empty');
 		}
-		this.username = props.username;
-		this.chatId = props.chatId;
+		this._username = props.username;
+		this._chatId = props.chatId;
+	}
+
+	get displayName() {
+		return this._displayName;
+	}
+	get username() {
+		return this._username;
+	}
+	get chatId() {
+		return this._chatId;
 	}
 }

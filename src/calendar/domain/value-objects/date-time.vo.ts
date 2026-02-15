@@ -1,12 +1,12 @@
 export class DateTime {
-	constructor(private readonly _value: Date) {
+	private constructor(private readonly _value: Date) {
 		if (!(this._value instanceof Date) || Number.isNaN(this._value.getTime())) {
 			throw new Error('Invalid DateTime');
 		}
 		Object.freeze(this);
 	}
 
-	// ── фабрики ───────────────────────────────────────────────────────────────────
+	// фабрики
 	static now(): DateTime {
 		return new DateTime(new Date());
 	}
@@ -20,7 +20,7 @@ export class DateTime {
 		return new DateTime(new Date(iso));
 	}
 
-	// ── представления ─────────────────────────────────────────────────────────────
+	// представления
 	get value(): Date {
 		// всегда отдаём клон, чтобы сохранить иммутабельность VO
 		return new Date(this._value.getTime());
@@ -35,7 +35,7 @@ export class DateTime {
 		return this._value.toISOString();
 	}
 
-	// ── сравнения ─────────────────────────────────────────────────────────────────
+	// сравнения
 	isBefore(other: DateTime): boolean {
 		return this.toMillis() < other.toMillis();
 	}
@@ -56,7 +56,7 @@ export class DateTime {
 		return this.compare(other) >= 0;
 	}
 
-	// ── арифметика ────────────────────────────────────────────────────────────────
+	// арифметика
 	addMinutes(n: number): DateTime {
 		return DateTime.fromMillis(this.toMillis() + n * 60_000);
 	}

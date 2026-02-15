@@ -47,7 +47,7 @@ export class AcceptSpaceInviteCodeUseCase {
 
 		const member = new SpaceMember({ userId: cmd.userId, spaceId: foundCode.spaceId });
 		await this.spaceMemberRepository.add(member);
-		foundCode.markUsed();
+		foundCode.use();
 		await this.spaceInviteCodeRepository.update(foundCode);
 	}
 }

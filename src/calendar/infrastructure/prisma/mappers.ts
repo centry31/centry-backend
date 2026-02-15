@@ -23,19 +23,19 @@ export type EventReminderRow = {
 	updatedAt: Date;
 };
 
-export const toEventDomain = (row: EventRow, reminders: EventReminderRow[] = []): Event => {
-	const rds = reminders.map(
-		(r) =>
-			new EventReminder({
-				id: r.id,
-				eventId: r.eventId,
-				offsetMinutes: r.offsetMinutes,
-				scheduledAt: r.scheduledAt ? DateTime.fromDate(r.scheduledAt) : undefined,
-				sentAt: r.sentAt ? DateTime.fromDate(r.sentAt) : undefined,
-				createdAt: DateTime.fromDate(r.createdAt),
-				updatedAt: DateTime.fromDate(r.updatedAt),
-			}),
-	);
+export const toEventReminderDomain = (row: EventReminderRow): EventReminder =>
+	new EventReminder({
+		id: row.id,
+		eventId: row.eventId,
+		offsetMinutes: row.offsetMinutes,
+		scheduledAt: row.scheduledAt ? DateTime.fromDate(row.scheduledAt) : undefined,
+		sentAt: row.sentAt ? DateTime.fromDate(row.sentAt) : undefined,
+		createdAt: DateTime.fromDate(row.createdAt),
+		updatedAt: DateTime.fromDate(row.updatedAt),
+	});
+
+export const toEventDomain = (row: EventRow, reminderRows: EventReminderRow[] = []): Event => {
+	const reminders = reminderRows.map((row) => toEventReminderDomain(row));
 
 	return new Event({
 		id: row.id,
@@ -46,29 +46,29 @@ export const toEventDomain = (row: EventRow, reminders: EventReminderRow[] = [])
 		spaceId: row.spaceId,
 		createdById: row.createdById,
 		createdAt: DateTime.fromDate(row.createdAt),
-		reminders: rds,
+		reminders,
 	});
 };
 
 // Для записи — отдаём БЕЗ reminders:
-export const toEventPersistence = (ev: Event): EventRow => ({
-	id: ev.id,
-	title: ev.title,
-	description: ev.description ?? null,
-	start: ev.start.value,
-	end: ev.end.value,
-	spaceId: ev.spaceId,
-	createdById: ev.createdById,
-	createdAt: ev.createdAt.value,
+export const toEventPersistence = (event: Event): EventRow => ({
+	id: event.id,
+	title: event.title,
+	description: event.description ?? null,
+	start: event.start.value,
+	end: event.end.value,
+	spaceId: event.spaceId,
+	createdById: event.createdById,
+	createdAt: event.createdAt.value,
 	updatedAt: new Date(),
 });
 
-export const toReminderPersistence = (rem: EventReminder, eventId: string): EventReminderRow => ({
-	id: rem.id,
-	eventId,
-	offsetMinutes: rem.offsetMinutes,
-	scheduledAt: rem.scheduledAt ? rem.scheduledAt.value : null,
-	sentAt: rem.sentAt ? rem.sentAt.value : null,
-	createdAt: rem.createdAt.value,
+export const toReminderPersistence = (reminder: EventReminder): EventReminderRow => ({
+	id: reminder.id,
+	eventId: reminder.eventId,
+	offsetMinutes: reminder.offsetMinutes,
+	scheduledAt: reminder.scheduledAt ? reminder.scheduledAt.value : null,
+	sentAt: reminder.sentAt ? reminder.sentAt.value : null,
+	createdAt: reminder.createdAt.value,
 	updatedAt: new Date(),
 });

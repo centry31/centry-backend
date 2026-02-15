@@ -13,7 +13,7 @@ import {
 
 import { Inject } from '@nestjs/common';
 
-export type Cmd = {
+type Cmd = {
 	code: string;
 };
 

@@ -16,6 +16,7 @@ export class LoginMagicLink {
 	public readonly userId: string;
 	public readonly expiresAt: DateTime;
 	public readonly createdAt: DateTime;
+
 	private _usedAt?: DateTime;
 
 	constructor(props: MagicLinkProps) {
@@ -24,6 +25,7 @@ export class LoginMagicLink {
 		this.userId = props.userId;
 		this.expiresAt = props.expiresAt;
 		this.createdAt = props.createdAt;
+
 		if (props.usedAt) {
 			this._usedAt = props.usedAt;
 		}

@@ -25,6 +25,7 @@ import { AuthenticatedRequest } from 'common/types/authenticated-request.interfa
 import { formatResponse } from 'common/utils/response.util';
 import { JwtAuthGuard } from 'users';
 
+// TODO: гварды
 @UseFilters(SpaceExceptionFilter)
 @UseGuards(JwtAuthGuard)
 @Controller('spaces')
