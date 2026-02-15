@@ -6,10 +6,12 @@ import { UpdateEventUseCase } from './application/use-cases/update-event.use-cas
 import { EVENT_REPOSITORY } from './application/ports/event.repository';
 
 import { PrismaEventRepository } from './infrastructure/prisma/prisma-event.repository';
+import { PrismaSpaceTgChatQuery } from './infrastructure/prisma/prisma-space-tg-chat.query';
 
 import { EventsController } from './interface/http/events.controller';
 
 import { Module } from '@nestjs/common';
+import { SPACE_TG_CHAT_QUERY } from 'spaces';
 import { UsersModule } from 'users';
 
 @Module({
@@ -21,6 +23,7 @@ import { UsersModule } from 'users';
 		UpdateEventUseCase,
 
 		{ provide: EVENT_REPOSITORY, useClass: PrismaEventRepository },
+		{ provide: SPACE_TG_CHAT_QUERY, useClass: PrismaSpaceTgChatQuery },
 	],
 	imports: [UsersModule],
 	exports: [],

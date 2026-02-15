@@ -1,4 +1,4 @@
-import type { SpaceTgChatLinkCode } from '@spaces/domain/space-tg-chat-link-code';
+import type { SpaceTgChatLinkCode } from '@spaces/domain/space-tg-chat-link-code.entity';
 
 import type { SpaceTgChatLinkCodeRepository } from '@spaces/application/ports/space-tg-chat-link-code/space-tg-chat-link-code.repository';
 

@@ -16,6 +16,28 @@ export class PrismaSpaceTgChatRepository implements SpaceTgChatRepository {
 		return rows.map((row) => toDomain(row));
 	}
 
+	async hasBySpaceId(spaceId: string): Promise<boolean> {
+		const row = await this.prisma.spaceTgChat.findFirst({
+			where: { spaceId },
+			select: { id: true },
+		});
+		return !!row;
+	}
+
+	async findSpaceIdsWithChats(spaceIds: string[]): Promise<string[]> {
+		if (spaceIds.length === 0) {
+			return [];
+		}
+
+		const rows = await this.prisma.spaceTgChat.findMany({
+			where: { spaceId: { in: spaceIds } },
+			select: { spaceId: true },
+			distinct: ['spaceId'],
+		});
+
+		return rows.map((row) => row.spaceId);
+	}
+
 	async create(chat: SpaceTgChat): Promise<SpaceTgChat> {
 		const data = toPersistence(chat);
 		const row = await this.prisma.spaceTgChat.create({ data });

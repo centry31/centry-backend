@@ -46,7 +46,7 @@ export class SpacesController {
 			description: createSpaceDto.description,
 			ownerId: user.id,
 		});
-		const response = toSpaceResponse(space);
+		const response = toSpaceResponse(space, { userId: user.id, hasTelegramChats: false });
 		return formatResponse(response, 'Пространство создано');
 	}
 
@@ -54,15 +54,20 @@ export class SpacesController {
 	async getUserSpaces(@Request() req: AuthenticatedRequest) {
 		const { user } = req;
 		const spaces = await this.getUserSpacesUseCase.execute({ userId: user.id });
-		const response = spaces.map((space) => toSpaceResponse(space, user.id));
+		const response = spaces.map((item) =>
+			toSpaceResponse(item.space, {
+				userId: user.id,
+				hasTelegramChats: item.hasTelegramChats,
+			}),
+		);
 		return formatResponse(response, 'Пространства пользователя получены');
 	}
 
 	@Get(':spaceId')
 	async get(@Param('spaceId') spaceId: string, @Request() req: AuthenticatedRequest) {
 		const { user } = req;
-		const space = await this.getSpaceUseCase.execute({ spaceId });
-		const response = toSpaceResponse(space, user.id);
+		const { space, hasTelegramChats } = await this.getSpaceUseCase.execute({ spaceId });
+		const response = toSpaceResponse(space, { userId: user.id, hasTelegramChats });
 		return formatResponse(response, 'Пространство получено');
 	}
 

@@ -6,7 +6,8 @@ import { DateTime } from 'common/domain/value-objects/date-time.vo';
 
 import { EVENT_REPOSITORY, EventRepository } from 'calendar/application/ports/event.repository';
 
-import { Inject } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject } from '@nestjs/common';
+import { SPACE_TG_CHAT_QUERY, SpaceTgChatQuery } from 'spaces';
 
 type Cmd = {
 	title: string;
@@ -23,9 +24,24 @@ type Reminder = {
 };
 
 export class CreateEventUseCase {
-	constructor(@Inject(EVENT_REPOSITORY) private readonly eventRepository: EventRepository) {}
+	constructor(
+		@Inject(EVENT_REPOSITORY)
+		private readonly eventRepository: EventRepository,
+
+		@Inject(SPACE_TG_CHAT_QUERY)
+		private readonly spaceTgChatQuery: SpaceTgChatQuery,
+	) {}
 
 	async execute(cmd: Cmd): Promise<Event> {
+		const hasSpaceTgChats = await this.spaceTgChatQuery.hasBySpaceId(cmd.spaceId);
+
+		if (cmd.reminders.length > 0 && !hasSpaceTgChats) {
+			throw new HttpException(
+				'Для добавления напоминаний нужно привязать ТГ канал',
+				HttpStatus.BAD_REQUEST,
+			);
+		}
+
 		const startVo = DateTime.fromDate(cmd.start);
 		const endVo = DateTime.fromDate(cmd.end);
 		const createdAtVo = DateTime.now();

@@ -6,12 +6,34 @@ type SpaceResponse = {
 	id: string;
 	name: string;
 	description?: string;
-	access: Access;
+	access?: Access;
+	hasTelegramChats?: boolean;
 };
 
-export const toSpaceResponse = (space: Space, userId?: string): SpaceResponse => ({
-	id: space.id,
-	name: space.name.value,
-	description: space.description,
-	access: space.ownerId === userId ? 'owner' : 'member',
-});
+type ToSpaceResponseParams = {
+	userId?: string;
+	hasTelegramChats?: boolean;
+};
+
+export const toSpaceResponse = (
+	space: Space,
+	params: ToSpaceResponseParams = {},
+): SpaceResponse => {
+	const response: SpaceResponse = {
+		id: space.id,
+		name: space.name.value,
+		description: space.description,
+	};
+
+	if (params.userId) {
+		const access = space.ownerId === params.userId ? 'owner' : 'member';
+		response.access = access;
+	}
+
+	if (params.hasTelegramChats !== undefined) {
+		const hasTelegramChats = params.hasTelegramChats;
+		response.hasTelegramChats = hasTelegramChats;
+	}
+
+	return response;
+};

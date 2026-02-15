@@ -1,6 +1,6 @@
 import * as crypto from 'crypto';
 
-import { SpaceTgChatLinkCode } from '@spaces/domain/space-tg-chat-link-code';
+import { SpaceTgChatLinkCode } from '@spaces/domain/space-tg-chat-link-code.entity';
 import { DateTime } from 'common/domain/value-objects/date-time.vo';
 import { ExpiresAt } from 'spaces/domain/value-objects/expires-at.vo';
 

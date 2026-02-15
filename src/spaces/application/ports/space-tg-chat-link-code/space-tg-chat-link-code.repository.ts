@@ -1,4 +1,4 @@
-import type { SpaceTgChatLinkCode } from 'spaces/domain/space-tg-chat-link-code';
+import type { SpaceTgChatLinkCode } from 'spaces/domain/space-tg-chat-link-code.entity';
 
 export interface SpaceTgChatLinkCodeRepository {
 	findById(id: string): Promise<SpaceTgChatLinkCode | null>;
