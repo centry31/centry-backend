@@ -12,6 +12,7 @@ import {
 } from '@spaces/application/ports/space-member/space-member.repository';
 
 import { Inject } from '@nestjs/common';
+import { runUseCase } from 'common/application/errors/run-use-case';
 
 type Cmd = {
 	code: string;
@@ -28,26 +29,27 @@ export class AcceptSpaceInviteCodeUseCase {
 	) {}
 
 	async execute(cmd: Cmd): Promise<void> {
-		const foundCode = await this.spaceInviteCodeRepository.findOneByCode(cmd.code);
-		if (!foundCode) {
-			throw new InviteCodeNotFoundError();
-		}
-		if (!foundCode.canBeUsed()) {
-			throw new InviteCodeInvalidError();
-		}
+		return runUseCase(async () => {
+			const foundCode = await this.spaceInviteCodeRepository.findOneByCode(cmd.code);
+			if (!foundCode) {
+				throw new InviteCodeNotFoundError();
+			}
+			if (!foundCode.canBeUsed()) {
+				throw new InviteCodeInvalidError();
+			}
 
-		const alreadyMember = await this.spaceMemberRepository.findOne(
-			cmd.userId,
-			foundCode.spaceId,
-		);
-		if (alreadyMember) {
-			// ничего не делаем
-			return;
-		}
+			const alreadyMember = await this.spaceMemberRepository.findOne(
+				cmd.userId,
+				foundCode.spaceId,
+			);
+			if (alreadyMember) {
+				return;
+			}
 
-		const member = new SpaceMember({ userId: cmd.userId, spaceId: foundCode.spaceId });
-		await this.spaceMemberRepository.add(member);
-		foundCode.use();
-		await this.spaceInviteCodeRepository.update(foundCode);
+			const member = new SpaceMember({ userId: cmd.userId, spaceId: foundCode.spaceId });
+			await this.spaceMemberRepository.add(member);
+			foundCode.use();
+			await this.spaceInviteCodeRepository.update(foundCode);
+		});
 	}
 }

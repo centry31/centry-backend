@@ -10,6 +10,7 @@ import {
 } from '@spaces/application/ports/space-tg-chat/space-tg-chat.repository';
 
 import { Inject } from '@nestjs/common';
+import { runUseCase } from 'common/application/errors/run-use-case';
 
 type Cmd = {
 	userId: string;
@@ -30,15 +31,17 @@ export class GetUserSpacesUseCase {
 	) {}
 
 	async execute(cmd: Cmd): Promise<Result[]> {
-		const spaces = await this.spaceRepository.findManyByMembershipUserId(cmd.userId);
-		const spaceIdsWithChats = await this.spaceTgChatRepository.findSpaceIdsWithChats(
-			spaces.map((space) => space.id),
-		);
-		const spaceIdsWithChatsSet = new Set(spaceIdsWithChats);
+		return runUseCase(async () => {
+			const spaces = await this.spaceRepository.findManyByMembershipUserId(cmd.userId);
+			const spaceIdsWithChats = await this.spaceTgChatRepository.findSpaceIdsWithChats(
+				spaces.map((space) => space.id),
+			);
+			const spaceIdsWithChatsSet = new Set(spaceIdsWithChats);
 
-		return spaces.map((space) => ({
-			space,
-			hasTelegramChats: spaceIdsWithChatsSet.has(space.id),
-		}));
+			return spaces.map((space) => ({
+				space,
+				hasTelegramChats: spaceIdsWithChatsSet.has(space.id),
+			}));
+		});
 	}
 }

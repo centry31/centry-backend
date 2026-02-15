@@ -1,4 +1,3 @@
-import { SpaceMemberRemoveError } from '@spaces/domain/errors/space-member-remove.error';
 import { SpaceNotFoundError } from '@spaces/domain/errors/space-not-found.error';
 
 import {
@@ -10,7 +9,8 @@ import {
 	SpaceMemberRepository,
 } from '@spaces/application/ports/space-member/space-member.repository';
 
-import { Inject } from '@nestjs/common';
+import { ForbiddenException, Inject } from '@nestjs/common';
+import { runUseCase } from 'common/application/errors/run-use-case';
 
 type Cmd = {
 	spaceId: string;
@@ -27,14 +27,16 @@ export class RemoveSpaceMemberUseCase {
 	) {}
 
 	async execute(cmd: Cmd): Promise<void> {
-		const space = await this.spaceRepository.findById(cmd.spaceId);
-		if (!space) {
-			throw new SpaceNotFoundError();
-		}
-		if (space.ownerId === cmd.userId) {
-			throw new SpaceMemberRemoveError();
-		}
+		return runUseCase(async () => {
+			const space = await this.spaceRepository.findById(cmd.spaceId);
+			if (!space) {
+				throw new SpaceNotFoundError();
+			}
+			if (space.ownerId === cmd.userId) {
+				throw new ForbiddenException('Нельзя удалить владельца пространства');
+			}
 
-		await this.spaceMemberRepository.remove(cmd.userId, cmd.spaceId);
+			await this.spaceMemberRepository.remove(cmd.userId, cmd.spaceId);
+		});
 	}
 }

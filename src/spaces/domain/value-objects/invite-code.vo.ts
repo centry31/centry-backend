@@ -1,3 +1,5 @@
+import { DomainValidationError } from 'common/domain/errors/domain.error';
+
 export class InviteCode {
 	public readonly value: string;
 
@@ -5,7 +7,7 @@ export class InviteCode {
 	constructor(value: string) {
 		const normalizedValue = value.trim();
 		if (!normalizedValue) {
-			throw new Error('InviteCode cannot be empty');
+			throw new DomainValidationError('InviteCode cannot be empty');
 		}
 		this.value = normalizedValue;
 	}

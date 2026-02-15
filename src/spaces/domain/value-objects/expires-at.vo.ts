@@ -1,3 +1,4 @@
+import { DomainValidationError } from 'common/domain/errors/domain.error';
 import { DateTime } from 'common/domain/value-objects/date-time.vo';
 
 export class ExpiresAt {
@@ -6,7 +7,7 @@ export class ExpiresAt {
 	constructor(date: Date) {
 		const dateTime = DateTime.fromDate(date);
 		if (dateTime.isSameOrBefore(DateTime.now())) {
-			throw new Error('Invite code expiry must be in the future');
+			throw new DomainValidationError('Invite code expiry must be in the future');
 		}
 
 		this._value = dateTime;

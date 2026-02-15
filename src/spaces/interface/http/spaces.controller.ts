@@ -7,7 +7,6 @@ import { UpdateSpaceUseCase } from '@spaces/application/use-cases/space/update-s
 import { CreateSpaceDto } from './dto/space/create-space.dto';
 import { toSpaceResponse } from './dto/space/space-response.mapper';
 import { UpdateSpaceDto } from './dto/space/update-space.dto';
-import { SpaceExceptionFilter } from './filter/space-exception.filter';
 
 import {
 	Body,
@@ -18,7 +17,6 @@ import {
 	Patch,
 	Post,
 	Request,
-	UseFilters,
 	UseGuards,
 } from '@nestjs/common';
 import { AuthenticatedRequest } from 'common/types/authenticated-request.interface';
@@ -26,7 +24,6 @@ import { formatResponse } from 'common/utils/response.util';
 import { JwtAuthGuard } from 'users';
 
 // TODO: гварды
-@UseFilters(SpaceExceptionFilter)
 @UseGuards(JwtAuthGuard)
 @Controller('spaces')
 export class SpacesController {

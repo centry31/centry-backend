@@ -11,6 +11,7 @@ import {
 } from '@spaces/application/ports/space-tg-chat/space-tg-chat.repository';
 
 import { Inject } from '@nestjs/common';
+import { runUseCase } from 'common/application/errors/run-use-case';
 
 type Cmd = {
 	spaceId: string;
@@ -29,12 +30,14 @@ export class GetSpaceUseCase {
 	) {}
 
 	async execute(cmd: Cmd): Promise<Result> {
-		const space = await this.spaceRepository.findById(cmd.spaceId);
-		if (!space) {
-			throw new SpaceNotFoundError();
-		}
+		return runUseCase(async () => {
+			const space = await this.spaceRepository.findById(cmd.spaceId);
+			if (!space) {
+				throw new SpaceNotFoundError();
+			}
 
-		const hasTelegramChats = await this.spaceTgChatRepository.hasBySpaceId(space.id);
-		return { space, hasTelegramChats };
+			const hasTelegramChats = await this.spaceTgChatRepository.hasBySpaceId(space.id);
+			return { space, hasTelegramChats };
+		});
 	}
 }

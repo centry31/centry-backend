@@ -6,7 +6,8 @@ import { TelegramId as TgId } from 'common/domain/value-objects/telegram-id.vo';
 import { TOKEN_SERVICE, TokenService } from '@users/application/ports/jwt/token.service';
 import { USER_REPOSITORY, UserRepository } from '@users/application/ports/user/user.repository';
 
-import { Inject } from '@nestjs/common';
+import { BadRequestException, Inject } from '@nestjs/common';
+import { runUseCase } from 'common/application/errors/run-use-case';
 
 type Cmd = {
 	id: string;
@@ -54,37 +55,37 @@ export class TelegramAuthUseCase {
 		// TODO: вынести ошибки
 		// 4) compare in constant time
 		if (!this.constantTimeEqual(hmac, hash)) {
-			// throw new HttpException('Неверный хэш телеграмма', HttpStatus.BAD_REQUEST);
-			throw new Error('Неверный хэш телеграмма');
+			throw new BadRequestException('Неверный хэш телеграмма');
 		}
 
 		// 5) freshness (<= 24h)
 		const authMs = Number(cmd.auth_date) * 1000;
 		if (!Number.isFinite(authMs) || Date.now() - authMs > 24 * 60 * 60 * 1000) {
-			// throw new HttpException('Дата истекла', HttpStatus.BAD_REQUEST);
-			throw new Error('Дата истекла');
+			throw new BadRequestException('Дата истекла');
 		}
 	}
 
 	async execute(cmd: Cmd): Promise<string> {
-		this.validateTelegramPayload(cmd);
+		return runUseCase(async () => {
+			this.validateTelegramPayload(cmd);
 
-		const existUser = await this.userRepository.findByTgId(cmd.id);
-		if (existUser) {
-			const payload = { id: existUser.id };
+			const existUser = await this.userRepository.findByTgId(cmd.id);
+			if (existUser) {
+				const payload = { id: existUser.id };
+				return this.tokenService.sign(payload);
+			}
+
+			const tgIdVo = TgId.fromBigInt(cmd.id);
+			const user = new User({
+				id: crypto.randomUUID(),
+				tgId: tgIdVo,
+				displayName: cmd.first_name,
+				username: cmd.username,
+			});
+			await this.userRepository.create(user);
+
+			const payload = { id: user.id };
 			return this.tokenService.sign(payload);
-		}
-
-		const tgIdVo = TgId.fromBigInt(cmd.id);
-		const user = new User({
-			id: crypto.randomUUID(),
-			tgId: tgIdVo,
-			displayName: cmd.first_name,
-			username: cmd.username,
 		});
-		await this.userRepository.create(user);
-
-		const payload = { id: user.id };
-		return this.tokenService.sign(payload);
 	}
 }

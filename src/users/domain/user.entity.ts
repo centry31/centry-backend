@@ -1,3 +1,4 @@
+import { DomainValidationError } from 'common/domain/errors/domain.error';
 import type { TelegramId as TgId } from 'common/domain/value-objects/telegram-id.vo';
 
 type UserProps = {
@@ -39,7 +40,7 @@ export class User {
 	changeDisplayName(displayName: string): void {
 		const normalizedDisplayName = displayName.trim();
 		if (!normalizedDisplayName) {
-			throw new Error('Display name cannot be empty');
+			throw new DomainValidationError('Display name cannot be empty');
 		}
 
 		this._displayName = normalizedDisplayName;

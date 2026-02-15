@@ -6,6 +6,7 @@ import {
 } from '@spaces/application/ports/space-invite-code/space-invite-code.repository';
 
 import { Inject } from '@nestjs/common';
+import { runUseCase } from 'common/application/errors/run-use-case';
 
 type Cmd = {
 	spaceId: string;
@@ -18,6 +19,8 @@ export class GetActiveSpaceInviteCodesUseCase {
 	) {}
 
 	async execute(cmd: Cmd): Promise<SpaceInviteCode[]> {
-		return this.spaceInviteCodeRepository.findActiveBySpace(cmd.spaceId);
+		return runUseCase(async () => {
+			return this.spaceInviteCodeRepository.findActiveBySpace(cmd.spaceId);
+		});
 	}
 }

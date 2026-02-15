@@ -11,6 +11,7 @@ import {
 
 import { Inject } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { runUseCase } from 'common/application/errors/run-use-case';
 import { addMinutes } from 'date-fns';
 
 const DEFAULT_MAX_USES = 1;
@@ -27,23 +28,24 @@ export class CreateSpaceTgChatLinkCodeUseCase {
 	) {}
 
 	async execute(cmd: Cmd): Promise<string> {
-		const secret = crypto.randomBytes(16).toString('hex');
-		const hashCode = await bcrypt.hash(secret, 10);
-		const expiresAt = addMinutes(new Date(), 15);
+		return runUseCase(async () => {
+			const secret = crypto.randomBytes(16).toString('hex');
+			const hashCode = await bcrypt.hash(secret, 10);
+			const expiresAt = addMinutes(new Date(), 15);
 
-		const tgChatLinkCode = new SpaceTgChatLinkCode({
-			id: crypto.randomUUID(),
-			hashCode,
-			expiresAt: new ExpiresAt(expiresAt),
-			spaceId: cmd.spaceId,
-			createdByUserId: cmd.userId,
-			createdAt: DateTime.now(),
-			maxUses: DEFAULT_MAX_USES,
+			const tgChatLinkCode = new SpaceTgChatLinkCode({
+				id: crypto.randomUUID(),
+				hashCode,
+				expiresAt: new ExpiresAt(expiresAt),
+				spaceId: cmd.spaceId,
+				createdByUserId: cmd.userId,
+				createdAt: DateTime.now(),
+				maxUses: DEFAULT_MAX_USES,
+			});
+
+			await this.spaceTgChatLinkCodeRepository.create(tgChatLinkCode);
+
+			return `${tgChatLinkCode.id}.${secret}`;
 		});
-
-		await this.spaceTgChatLinkCodeRepository.create(tgChatLinkCode);
-
-		// возвращаем в UI «id.secret», сам secret не храним
-		return `${tgChatLinkCode.id}.${secret}`;
 	}
 }

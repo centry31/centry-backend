@@ -10,6 +10,7 @@ import {
 } from '@spaces/application/ports/space-invite-code/space-invite-code.repository';
 
 import { Inject } from '@nestjs/common';
+import { runUseCase } from 'common/application/errors/run-use-case';
 
 type Cmd = {
 	maxUses: number;
@@ -25,14 +26,16 @@ export class CreateSpaceInviteCodeUseCase {
 	) {}
 
 	async execute(cmd: Cmd): Promise<SpaceInviteCode> {
-		const code = randomBytes(8).toString('base64url');
-		const spaceInviteCode = new SpaceInviteCode({
-			code: new InviteCode(code),
-			spaceId: cmd.spaceId,
-			maxUses: cmd.maxUses,
-			expiresAt: new ExpiresAt(cmd.expiresAt),
-			createdByUserId: cmd.createdByUserId,
+		return runUseCase(async () => {
+			const code = randomBytes(8).toString('base64url');
+			const spaceInviteCode = new SpaceInviteCode({
+				code: new InviteCode(code),
+				spaceId: cmd.spaceId,
+				maxUses: cmd.maxUses,
+				expiresAt: new ExpiresAt(cmd.expiresAt),
+				createdByUserId: cmd.createdByUserId,
+			});
+			return this.spaceInviteCodeRepository.create(spaceInviteCode);
 		});
-		return this.spaceInviteCodeRepository.create(spaceInviteCode);
 	}
 }

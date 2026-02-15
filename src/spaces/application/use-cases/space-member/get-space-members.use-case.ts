@@ -4,6 +4,7 @@ import {
 } from '@spaces/application/ports/space-member/space-member.repository';
 
 import { Inject } from '@nestjs/common';
+import { runUseCase } from 'common/application/errors/run-use-case';
 import { USER_QUERY, UserQuery } from 'users';
 
 type Cmd = {
@@ -21,9 +22,11 @@ export class GetSpaceMembersUseCase {
 
 	// TODO: подумать над тем, чтобы в дальнейшем ограничить эту ручку
 	async execute(cmd: Cmd) {
-		const members = await this.spaceMemberRepository.findManyBySpaceId(cmd.spaceId);
-		const userIds = members.map((member) => member.userId);
+		return runUseCase(async () => {
+			const members = await this.spaceMemberRepository.findManyBySpaceId(cmd.spaceId);
+			const userIds = members.map((member) => member.userId);
 
-		return this.userQuery.findByIds(userIds);
+			return this.userQuery.findByIds(userIds);
+		});
 	}
 }

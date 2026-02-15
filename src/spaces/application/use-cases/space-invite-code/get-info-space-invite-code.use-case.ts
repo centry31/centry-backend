@@ -12,6 +12,7 @@ import {
 } from '@spaces/application/ports/space-invite-code/space-invite-code.repository';
 
 import { Inject } from '@nestjs/common';
+import { runUseCase } from 'common/application/errors/run-use-case';
 
 type Cmd = {
 	code: string;
@@ -26,19 +27,21 @@ export class GetInfoSpaceInviteCodeUseCase {
 	) {}
 
 	async execute(cmd: Cmd): Promise<Space> {
-		const foundCode = await this.spaceInviteCodeRepository.findOneByCode(cmd.code);
-		if (!foundCode) {
-			throw new InviteCodeNotFoundError();
-		}
-		if (!foundCode.canBeUsed()) {
-			throw new InviteCodeInvalidError();
-		}
+		return runUseCase(async () => {
+			const foundCode = await this.spaceInviteCodeRepository.findOneByCode(cmd.code);
+			if (!foundCode) {
+				throw new InviteCodeNotFoundError();
+			}
+			if (!foundCode.canBeUsed()) {
+				throw new InviteCodeInvalidError();
+			}
 
-		const space = await this.spaceRepository.findById(foundCode.spaceId);
-		if (!space) {
-			throw new InviteCodeInvalidError();
-		}
+			const space = await this.spaceRepository.findById(foundCode.spaceId);
+			if (!space) {
+				throw new InviteCodeInvalidError();
+			}
 
-		return space;
+			return space;
+		});
 	}
 }

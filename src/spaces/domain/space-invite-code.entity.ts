@@ -1,3 +1,4 @@
+import { DomainValidationError } from 'common/domain/errors/domain.error';
 import { DateTime } from 'common/domain/value-objects/date-time.vo';
 
 import type { ExpiresAt } from './value-objects/expires-at.vo';
@@ -27,15 +28,15 @@ export class SpaceInviteCode {
 
 	constructor(props: SpaceInviteCodeProps) {
 		if (props.maxUses < 1) {
-			throw new Error('maxUses must be greater than 0');
+			throw new DomainValidationError('maxUses must be greater than 0');
 		}
 
 		const usedCount = props.usedCount ?? 0;
 		if (usedCount < 0) {
-			throw new Error('usedCount cannot be negative');
+			throw new DomainValidationError('usedCount cannot be negative');
 		}
 		if (usedCount > props.maxUses) {
-			throw new Error('usedCount cannot exceed maxUses');
+			throw new DomainValidationError('usedCount cannot exceed maxUses');
 		}
 
 		this.code = props.code;
@@ -69,7 +70,7 @@ export class SpaceInviteCode {
 
 	use(now: DateTime = DateTime.now()): void {
 		if (!this.canBeUsed(now)) {
-			throw new Error('Cannot mark used: already used or expired');
+			throw new DomainValidationError('Cannot mark used: already used or expired');
 		}
 
 		this._usedCount += 1;

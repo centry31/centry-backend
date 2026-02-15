@@ -1,9 +1,11 @@
+import { DomainValidationError } from 'common/domain/errors/domain.error';
+
 export class TelegramId {
 	private readonly _value: string;
 
 	private constructor(value: string) {
 		if (!/^-?\d+$/.test(value)) {
-			throw new Error('Invalid Telegram id');
+			throw new DomainValidationError('Invalid Telegram id');
 		}
 
 		this._value = value;
@@ -17,7 +19,7 @@ export class TelegramId {
 
 		if (typeof input === 'number') {
 			if (!Number.isInteger(input) || !Number.isSafeInteger(input)) {
-				throw new Error('Invalid Telegram id');
+				throw new DomainValidationError('Invalid Telegram id');
 			}
 			return new TelegramId(input.toString());
 		}

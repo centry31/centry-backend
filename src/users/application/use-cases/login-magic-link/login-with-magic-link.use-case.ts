@@ -11,6 +11,7 @@ import { USER_REPOSITORY, UserRepository } from '@users/application/ports/user/u
 
 import { Inject } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { runUseCase } from 'common/application/errors/run-use-case';
 
 type Cmd = {
 	magicLink: string;
@@ -29,40 +30,42 @@ export class LoginWithMagicLinkUseCase {
 	) {}
 
 	async execute(cmd: Cmd): Promise<string> {
-		const { magicLink } = cmd;
+		return runUseCase(async () => {
+			const { magicLink } = cmd;
 
-		if (!magicLink.includes('.')) {
-			throw new LoginMagicLinkInvalidError();
-		}
+			if (!magicLink.includes('.')) {
+				throw new LoginMagicLinkInvalidError();
+			}
 
-		const [id, rawCode] = magicLink.split('.', 2);
-		if (!id || !rawCode) {
-			throw new LoginMagicLinkInvalidError();
-		}
+			const [id, rawCode] = magicLink.split('.', 2);
+			if (!id || !rawCode) {
+				throw new LoginMagicLinkInvalidError();
+			}
 
-		const loginMagicLink = await this.loginMagicLinkRepository.findById(id);
-		if (!loginMagicLink) {
-			throw new LoginMagicLinkNotFoundError();
-		}
-		if (!loginMagicLink.canBeUsed()) {
-			throw new LoginMagicLinkNotFoundError();
-		}
+			const loginMagicLink = await this.loginMagicLinkRepository.findById(id);
+			if (!loginMagicLink) {
+				throw new LoginMagicLinkNotFoundError();
+			}
+			if (!loginMagicLink.canBeUsed()) {
+				throw new LoginMagicLinkNotFoundError();
+			}
 
-		const ok = await bcrypt.compare(rawCode, loginMagicLink.hashCode.value);
-		if (!ok) {
-			throw new LoginMagicLinkNotFoundError();
-		}
+			const ok = await bcrypt.compare(rawCode, loginMagicLink.hashCode.value);
+			if (!ok) {
+				throw new LoginMagicLinkNotFoundError();
+			}
 
-		loginMagicLink.markUsed();
-		await this.loginMagicLinkRepository.update(loginMagicLink);
+			loginMagicLink.markUsed();
+			await this.loginMagicLinkRepository.update(loginMagicLink);
 
-		const user = await this.userRepository.findById(loginMagicLink.userId);
-		if (!user) {
-			throw new UserNotFoundError();
-		}
+			const user = await this.userRepository.findById(loginMagicLink.userId);
+			if (!user) {
+				throw new UserNotFoundError();
+			}
 
-		const payload = { id: user.id };
-		const token = this.tokenService.sign(payload);
-		return token;
+			const payload = { id: user.id };
+			const token = this.tokenService.sign(payload);
+			return token;
+		});
 	}
 }

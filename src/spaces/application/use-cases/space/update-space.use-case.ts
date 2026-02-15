@@ -6,7 +6,8 @@ import {
 	SpaceRepository,
 } from '@spaces/application/ports/space/space.repository';
 
-import { Inject } from '@nestjs/common';
+import { Inject, NotFoundException } from '@nestjs/common';
+import { runUseCase } from 'common/application/errors/run-use-case';
 
 type Cmd = {
 	spaceId: string;
@@ -19,12 +20,19 @@ export class UpdateSpaceUseCase {
 	constructor(@Inject(SPACE_REPOSITORY) private readonly spaceRepository: SpaceRepository) {}
 
 	async execute(cmd: Cmd): Promise<void> {
-		const space = new Space({
-			id: cmd.spaceId,
-			ownerId: cmd.ownerId,
-			name: new SpaceName(cmd.name),
-			description: cmd.description,
+		return runUseCase(async () => {
+			const existing = await this.spaceRepository.findById(cmd.spaceId);
+			if (!existing) {
+				throw new NotFoundException('Пространство не найдено');
+			}
+
+			const space = new Space({
+				id: cmd.spaceId,
+				ownerId: cmd.ownerId,
+				name: new SpaceName(cmd.name),
+				description: cmd.description,
+			});
+			await this.spaceRepository.updateInfo(space);
 		});
-		await this.spaceRepository.updateInfo(space);
 	}
 }

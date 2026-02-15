@@ -1,3 +1,4 @@
+import { DomainValidationError } from 'common/domain/errors/domain.error';
 import { DateTime } from 'common/domain/value-objects/date-time.vo';
 
 import type { HashCode } from './value-objests/hash-code.vo';
@@ -29,7 +30,7 @@ export class LoginMagicLink {
 		this._usedAt = props.usedAt;
 
 		if (this.expiresAt.isSameOrBefore(this.createdAt)) {
-			throw new Error('expiresAt must be after createdAt');
+			throw new DomainValidationError('expiresAt must be after createdAt');
 		}
 	}
 

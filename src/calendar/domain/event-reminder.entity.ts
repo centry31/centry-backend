@@ -1,3 +1,4 @@
+import { DomainValidationError } from 'common/domain/errors/domain.error';
 import { DateTime } from 'common/domain/value-objects/date-time.vo';
 
 type EventReminderProps = {
@@ -22,7 +23,7 @@ export class EventReminder {
 
 	constructor(props: EventReminderProps) {
 		if (props.offsetMinutes < 0) {
-			throw new Error('offsetMinutes must be >= 0');
+			throw new DomainValidationError('offsetMinutes must be >= 0');
 		}
 
 		this.id = props.id;
@@ -46,7 +47,7 @@ export class EventReminder {
 		if (this._scheduledAt) {
 			const expected = eventStart.addMinutes(-this.offsetMinutes);
 			if (!this._scheduledAt.isSame(expected)) {
-				throw new Error('scheduledAt does not match eventStart - offset');
+				throw new DomainValidationError('scheduledAt does not match eventStart - offset');
 			}
 		}
 	}
@@ -67,7 +68,7 @@ export class EventReminder {
 
 	markSent(now: DateTime = DateTime.now()): void {
 		if (this._sentAt) {
-			throw new Error('Reminder already sent');
+			throw new DomainValidationError('Reminder already sent');
 		}
 		this._sentAt = now;
 	}

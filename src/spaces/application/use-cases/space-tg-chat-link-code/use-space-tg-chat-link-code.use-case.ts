@@ -15,8 +15,9 @@ import {
 	SpaceTgChatRepository,
 } from 'spaces/application/ports/space-tg-chat/space-tg-chat.repository';
 
-import { Inject } from '@nestjs/common';
+import { BadRequestException, Inject, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { runUseCase } from 'common/application/errors/run-use-case';
 
 type Cmd = {
 	code: string;
@@ -38,40 +39,52 @@ export class UseSpaceTgChatLinkCodeUseCase {
 	) {}
 
 	private async validateLinkCode(code: string) {
-		if (!code || !code.includes('.')) throw new Error('Некорректный формат кода');
+		if (!code || !code.includes('.')) {
+			throw new BadRequestException('Некорректный формат кода');
+		}
 
 		const [id, secret] = code.split('.', 2);
-		if (!id || !secret) throw new Error('Некорректный формат кода');
+		if (!id || !secret) {
+			throw new BadRequestException('Некорректный формат кода');
+		}
 
 		const spaceTgChatLinkCode = await this.spaceTgChatLinkCodeRepository.findById(id);
-		if (!spaceTgChatLinkCode) throw new Error('Код не найден');
-		if (!spaceTgChatLinkCode.canBeUsed()) throw new Error('Код устарел');
+		if (!spaceTgChatLinkCode) {
+			throw new NotFoundException('Код не найден');
+		}
+		if (!spaceTgChatLinkCode.canBeUsed()) {
+			throw new BadRequestException('Код устарел');
+		}
 
 		const ok = await bcrypt.compare(secret, spaceTgChatLinkCode.hashCode);
-		if (!ok) throw new Error('Код не найден');
+		if (!ok) {
+			throw new NotFoundException('Код не найден');
+		}
 
 		return spaceTgChatLinkCode;
 	}
 
 	async execute(cmd: Cmd): Promise<void> {
-		const spaceTgChatLinkCode = await this.validateLinkCode(cmd.code);
-		spaceTgChatLinkCode.use();
-		await this.spaceTgChatLinkCodeRepository.update(spaceTgChatLinkCode);
+		return runUseCase(async () => {
+			const spaceTgChatLinkCode = await this.validateLinkCode(cmd.code);
+			spaceTgChatLinkCode.use();
+			await this.spaceTgChatLinkCodeRepository.update(spaceTgChatLinkCode);
 
-		const chatIdVo = TgId.from(cmd.chatId);
-		const initiatedByTgIdVo = TgId.from(cmd.initiatedByTgId);
-		const messageThreadIdVo = MessageThreadId.from(cmd.messageThreadId);
+			const chatIdVo = TgId.from(cmd.chatId);
+			const initiatedByTgIdVo = TgId.from(cmd.initiatedByTgId);
+			const messageThreadIdVo = MessageThreadId.from(cmd.messageThreadId);
 
-		const spaceTgChat = new SpaceTgChat({
-			id: crypto.randomUUID(),
-			title: cmd.title,
-			spaceId: spaceTgChatLinkCode.spaceId,
-			chatId: chatIdVo,
-			initiatedByTgId: initiatedByTgIdVo,
-			messageThreadId: messageThreadIdVo,
-			type: cmd.chatType as TgChatType,
-			createdAt: DateTime.now(),
+			const spaceTgChat = new SpaceTgChat({
+				id: crypto.randomUUID(),
+				title: cmd.title,
+				spaceId: spaceTgChatLinkCode.spaceId,
+				chatId: chatIdVo,
+				initiatedByTgId: initiatedByTgIdVo,
+				messageThreadId: messageThreadIdVo,
+				type: cmd.chatType as TgChatType,
+				createdAt: DateTime.now(),
+			});
+			await this.spaceTgChatRepository.create(spaceTgChat);
 		});
-		await this.spaceTgChatRepository.create(spaceTgChat);
 	}
 }

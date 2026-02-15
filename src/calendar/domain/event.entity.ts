@@ -1,3 +1,4 @@
+import { DomainValidationError } from 'common/domain/errors/domain.error';
 import type { DateTime } from 'common/domain/value-objects/date-time.vo';
 
 import type { EventReminder } from './event-reminder.entity';
@@ -65,7 +66,7 @@ export class Event {
 	private normalizeTitle(title: string): string {
 		const normalizedTitle = title.trim();
 		if (!normalizedTitle) {
-			throw new Error('Title cannot be empty');
+			throw new DomainValidationError('Title cannot be empty');
 		}
 
 		return normalizedTitle;
@@ -73,7 +74,7 @@ export class Event {
 
 	private ensureStartBeforeEnd(): void {
 		if (!this._start.isBefore(this._end)) {
-			throw new Error('Event.start must be strictly before Event.end');
+			throw new DomainValidationError('Event.start must be strictly before Event.end');
 		}
 	}
 
@@ -93,7 +94,7 @@ export class Event {
 
 	changeStart(start: DateTime): void {
 		if (!start.isBefore(this._end)) {
-			throw new Error('start must be before end');
+			throw new DomainValidationError('start must be before end');
 		}
 		this._start = start;
 		// пересчитать абсолютные напоминания, если используем scheduledAt = start - offset
@@ -102,9 +103,18 @@ export class Event {
 
 	changeEnd(end: DateTime): void {
 		if (!this._start.isBefore(end)) {
-			throw new Error('end must be after start');
+			throw new DomainValidationError('end must be after start');
 		}
 		this._end = end;
+	}
+
+	changeTimeRange(start: DateTime, end: DateTime): void {
+		if (!start.isBefore(end)) {
+			throw new DomainValidationError('start must be before end');
+		}
+		this._start = start;
+		this._end = end;
+		this._reminders = this._reminders.map((r) => r.recalculateFor(start));
 	}
 
 	addReminder(rem: EventReminder): void {

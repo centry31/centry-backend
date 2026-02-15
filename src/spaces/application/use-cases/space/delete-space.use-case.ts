@@ -3,7 +3,8 @@ import {
 	SpaceRepository,
 } from '@spaces/application/ports/space/space.repository';
 
-import { Inject } from '@nestjs/common';
+import { Inject, NotFoundException } from '@nestjs/common';
+import { runUseCase } from 'common/application/errors/run-use-case';
 
 type Cmd = {
 	spaceId: string;
@@ -13,6 +14,13 @@ export class DeleteSpaceUseCase {
 	constructor(@Inject(SPACE_REPOSITORY) private readonly spaceRepository: SpaceRepository) {}
 
 	async execute(cmd: Cmd): Promise<void> {
-		await this.spaceRepository.delete(cmd.spaceId);
+		return runUseCase(async () => {
+			const existing = await this.spaceRepository.findById(cmd.spaceId);
+			if (!existing) {
+				throw new NotFoundException('Пространство не найдено');
+			}
+
+			await this.spaceRepository.delete(cmd.spaceId);
+		});
 	}
 }

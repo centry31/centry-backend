@@ -1,7 +1,7 @@
 import type { Event } from 'calendar/domain/event.entity';
 
 export interface EventRepository {
-	findByIdWithSpaceId(id: string, spaceId: string): Promise<Event>;
+	findByIdWithSpaceId(id: string, spaceId: string): Promise<Event | null>;
 	findManyBySpaceId(spaceId: string): Promise<Event[]>;
 
 	create(event: Event): Promise<Event>;

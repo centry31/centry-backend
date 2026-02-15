@@ -1,4 +1,4 @@
-import { randomBytes } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 
 import { LoginMagicLink } from '@users/domain/login-magic-link.entity';
 import { HashCode } from '@users/domain/value-objests/hash-code.vo';
@@ -11,6 +11,7 @@ import {
 
 import { Inject } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { runUseCase } from 'common/application/errors/run-use-case';
 import { addMinutes } from 'date-fns';
 
 type Cmd = {
@@ -24,23 +25,25 @@ export class CreateLoginMagicLinkUseCase {
 	) {}
 
 	async execute(cmd: Cmd): Promise<string> {
-		const rawCode = randomBytes(8).toString('base64url');
-		const hashCode = await bcrypt.hash(rawCode, 10);
-		const expiresAt = addMinutes(new Date(), 10);
+		return runUseCase(async () => {
+			const rawCode = randomBytes(8).toString('base64url');
+			const hashCode = await bcrypt.hash(rawCode, 10);
+			const expiresAt = addMinutes(new Date(), 10);
 
-		const hashCodeVo = new HashCode(hashCode);
-		const expiresAtVo = new DateTime(expiresAt);
-		const createdAtVo = new DateTime(new Date());
+			const hashCodeVo = new HashCode(hashCode);
+			const expiresAtVo = new DateTime(expiresAt);
+			const createdAtVo = new DateTime(new Date());
 
-		const loginMagicLink = new LoginMagicLink({
-			id: crypto.randomUUID(),
-			userId: cmd.userId,
-			hashCode: hashCodeVo,
-			expiresAt: expiresAtVo,
-			createdAt: createdAtVo,
+			const loginMagicLink = new LoginMagicLink({
+				id: randomUUID(),
+				userId: cmd.userId,
+				hashCode: hashCodeVo,
+				expiresAt: expiresAtVo,
+				createdAt: createdAtVo,
+			});
+
+			await this.loginMagicLinkRepository.create(loginMagicLink);
+			return `${loginMagicLink.id}.${rawCode}`;
 		});
-
-		await this.loginMagicLinkRepository.create(loginMagicLink);
-		return `${loginMagicLink.id}.${rawCode}`;
 	}
 }

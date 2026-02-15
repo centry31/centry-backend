@@ -14,6 +14,7 @@ import {
 } from '@spaces/application/ports/space-member/space-member.repository';
 
 import { Inject } from '@nestjs/common';
+import { runUseCase } from 'common/application/errors/run-use-case';
 
 type Cmd = {
 	name: string;
@@ -31,18 +32,20 @@ export class CreateSpaceUseCase {
 	) {}
 
 	async execute(cmd: Cmd): Promise<Space> {
-		const nameVo = new SpaceName(cmd.name);
-		const space = new Space({
-			id: crypto.randomUUID(),
-			name: nameVo,
-			description: cmd.description,
-			ownerId: cmd.ownerId,
+		return runUseCase(async () => {
+			const nameVo = new SpaceName(cmd.name);
+			const space = new Space({
+				id: crypto.randomUUID(),
+				name: nameVo,
+				description: cmd.description,
+				ownerId: cmd.ownerId,
+			});
+			const spaceMember = new SpaceMember({ spaceId: space.id, userId: cmd.ownerId });
+
+			await this.spaceRepository.create(space);
+			await this.spaceMemberRepository.add(spaceMember);
+
+			return space;
 		});
-		const spaceMember = new SpaceMember({ spaceId: space.id, userId: cmd.ownerId });
-
-		await this.spaceRepository.create(space);
-		await this.spaceMemberRepository.add(spaceMember);
-
-		return space;
 	}
 }

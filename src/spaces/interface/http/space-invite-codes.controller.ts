@@ -9,24 +9,12 @@ import { AcceptSpaceInviteCodeDto } from './dto/space-invite-code/accept-space-i
 import { CreateSpaceInviteCodeDto } from './dto/space-invite-code/create-space-invite-code.dto';
 import { GetInfoSpaceInviteCodeDto } from './dto/space-invite-code/get-info-space-invite-code.dto';
 import { toSpaceInviteCodeResponse } from './dto/space-invite-code/space-invite-code-response.mapper';
-import { SpaceInviteCodesExceptionFilter } from './filter/space-invite-codes-exception.filter';
 
-import {
-	Body,
-	Controller,
-	Delete,
-	Get,
-	Param,
-	Post,
-	Request,
-	UseFilters,
-	UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Request, UseGuards } from '@nestjs/common';
 import { AuthenticatedRequest } from 'common/types/authenticated-request.interface';
 import { formatResponse } from 'common/utils/response.util';
 import { JwtAuthGuard } from 'users';
 
-@UseFilters(SpaceInviteCodesExceptionFilter)
 @UseGuards(JwtAuthGuard)
 @Controller('space-invite-codes')
 export class SpaceInviteCodesController {

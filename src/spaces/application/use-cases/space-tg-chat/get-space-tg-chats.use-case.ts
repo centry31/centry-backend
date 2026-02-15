@@ -6,6 +6,7 @@ import {
 } from 'spaces/application/ports/space-tg-chat/space-tg-chat.repository';
 
 import { Inject } from '@nestjs/common';
+import { runUseCase } from 'common/application/errors/run-use-case';
 
 type Cmd = {
 	spaceId: string;
@@ -19,7 +20,9 @@ export class GetSpaceTgChatsUseCase {
 	) {}
 
 	async execute(cmd: Cmd): Promise<SpaceTgChat[]> {
-		const spaceTgChats = await this.spaceTgChatRepository.getManyBySpaceId(cmd.spaceId);
-		return spaceTgChats;
+		return runUseCase(async () => {
+			const spaceTgChats = await this.spaceTgChatRepository.getManyBySpaceId(cmd.spaceId);
+			return spaceTgChats;
+		});
 	}
 }

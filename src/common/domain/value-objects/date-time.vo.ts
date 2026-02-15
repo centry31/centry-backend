@@ -1,9 +1,11 @@
+import { DomainValidationError } from 'common/domain/errors/domain.error';
+
 export class DateTime {
 	private readonly _value: Date;
 
 	constructor(value: Date) {
 		if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
-			throw new Error('Invalid DateTime');
+			throw new DomainValidationError('Invalid DateTime');
 		}
 
 		this._value = new Date(value.getTime());

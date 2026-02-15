@@ -9,7 +9,8 @@ import {
 	SpaceMemberRepository,
 } from '@spaces/application/ports/space-member/space-member.repository';
 
-import { Inject } from '@nestjs/common';
+import { BadRequestException, Inject, NotFoundException } from '@nestjs/common';
+import { runUseCase } from 'common/application/errors/run-use-case';
 
 type Cmd = {
 	spaceId: string;
@@ -25,16 +26,21 @@ export class LeaveSpaceUseCase {
 	) {}
 
 	async execute(cmd: Cmd): Promise<void> {
-		const space = await this.spaceRepository.findById(cmd.spaceId);
-		const member = await this.spaceMemberRepository.findOne(cmd.userId, cmd.spaceId);
+		return runUseCase(async () => {
+			const space = await this.spaceRepository.findById(cmd.spaceId);
+			if (!space) {
+				throw new NotFoundException('Пространство не найдено');
+			}
 
-		if (!member) {
-			throw new SpaceMemberLeaveError();
-		}
-		if (space.ownerId === cmd.userId) {
-			throw new SpaceMemberLeaveError();
-		}
+			const member = await this.spaceMemberRepository.findOne(cmd.userId, cmd.spaceId);
+			if (!member) {
+				throw new SpaceMemberLeaveError();
+			}
+			if (space.ownerId === cmd.userId) {
+				throw new BadRequestException('Владелец пространства не может выйти');
+			}
 
-		await this.spaceMemberRepository.remove(cmd.userId, cmd.spaceId);
+			await this.spaceMemberRepository.remove(cmd.userId, cmd.spaceId);
+		});
 	}
 }

@@ -1,3 +1,5 @@
+import { DomainValidationError } from 'common/domain/errors/domain.error';
+
 type SpaceMemberProps = {
 	userId: string;
 	spaceId: string;
@@ -9,10 +11,10 @@ export class SpaceMember {
 
 	constructor(props: SpaceMemberProps) {
 		if (!props.userId.trim()) {
-			throw new Error('SpaceMember.userId cannot be empty');
+			throw new DomainValidationError('SpaceMember.userId cannot be empty');
 		}
 		if (!props.spaceId.trim()) {
-			throw new Error('SpaceMember.spaceId cannot be empty');
+			throw new DomainValidationError('SpaceMember.spaceId cannot be empty');
 		}
 
 		this.userId = props.userId;

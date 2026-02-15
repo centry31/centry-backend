@@ -11,7 +11,7 @@ import { PrismaService } from 'prisma.service';
 export class PrismaEventRepository implements EventRepository {
 	constructor(private readonly prisma: PrismaService) {}
 
-	async findByIdWithSpaceId(id: string, spaceId: string): Promise<Event> {
+	async findByIdWithSpaceId(id: string, spaceId: string): Promise<Event | null> {
 		const row = await this.prisma.event.findUnique({
 			where: { id, spaceId },
 			include: { reminders: true },

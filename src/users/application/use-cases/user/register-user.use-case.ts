@@ -5,7 +5,8 @@ import { TelegramId as TgId } from 'common/domain/value-objects/telegram-id.vo';
 
 import { USER_REPOSITORY, UserRepository } from '@users/application/ports/user/user.repository';
 
-import { Inject } from '@nestjs/common';
+import { ConflictException, Inject } from '@nestjs/common';
+import { runUseCase } from 'common/application/errors/run-use-case';
 
 type Cmd = {
 	tgId: string | number | bigint;
@@ -17,21 +18,22 @@ export class RegisterUserUseCase {
 	constructor(@Inject(USER_REPOSITORY) private readonly userRepository: UserRepository) {}
 
 	async execute(cmd: Cmd): Promise<User> {
-		const tg = TgId.fromBigInt(cmd.tgId);
+		return runUseCase(async () => {
+			const tg = TgId.fromBigInt(cmd.tgId);
 
-		const existing = await this.userRepository.findByTgId(tg.value);
-		if (existing) {
-			// Можно вернуть существующего или бросить ошибку
-			throw new Error(`User with tgId ${tg.value} already exists`);
-		}
+			const existing = await this.userRepository.findByTgId(tg.value);
+			if (existing) {
+				throw new ConflictException(`User with tgId ${tg.value} already exists`);
+			}
 
-		const user = new User({
-			id: crypto.randomUUID(),
-			tgId: tg,
-			displayName: cmd.displayName,
-			username: cmd.username,
+			const user = new User({
+				id: crypto.randomUUID(),
+				tgId: tg,
+				displayName: cmd.displayName,
+				username: cmd.username,
+			});
+
+			return this.userRepository.create(user);
 		});
-
-		return this.userRepository.create(user);
 	}
 }
