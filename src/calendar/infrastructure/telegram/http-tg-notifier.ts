@@ -1,7 +1,7 @@
 import type {
-	ReminderTgNotifier,
-	SendTelegramReminderCmd,
-} from 'calendar/application/ports/reminder-tg-notifier/reminder-tg-notifier.port';
+	SendTgNotifyCmd,
+	TgNotifier,
+} from 'calendar/application/ports/tg-notifier/tg-notifier.port';
 
 import { ENV } from 'common/infrastructure/env';
 
@@ -9,8 +9,8 @@ import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common
 import axios from 'axios';
 
 @Injectable()
-export class HttpReminderNotifier implements ReminderTgNotifier {
-	private readonly logger = new Logger(HttpReminderNotifier.name);
+export class HttpTgNotifier implements TgNotifier {
+	private readonly logger = new Logger(HttpTgNotifier.name);
 	private readonly endpointUrl: string;
 	private readonly apiToken?: string;
 
@@ -28,7 +28,7 @@ export class HttpReminderNotifier implements ReminderTgNotifier {
 		this.apiToken = ENV.TG_API_TOKEN;
 	}
 
-	async send(cmd: SendTelegramReminderCmd): Promise<void> {
+	async send(cmd: SendTgNotifyCmd): Promise<void> {
 		try {
 			const headers = this.apiToken
 				? {
@@ -51,17 +51,17 @@ export class HttpReminderNotifier implements ReminderTgNotifier {
 			);
 
 			this.logger.log(
-				`Reminder sent to chatId=${cmd.chatId} threadId=${cmd.messageThreadId}`,
+				`TG message sent to chatId=${cmd.chatId} threadId=${cmd.messageThreadId}`,
 			);
 		} catch (error) {
 			const status = error?.response?.status;
 			const responseData = error?.response?.data;
 
 			this.logger.error(
-				`Reminder send failed url=${this.endpointUrl} chatId=${cmd.chatId} threadId=${cmd.messageThreadId} status=${status}`,
+				`TG message send failed url=${this.endpointUrl} chatId=${cmd.chatId} threadId=${cmd.messageThreadId} status=${status}`,
 			);
 			if (responseData) {
-				this.logger.error(`Reminder send response: ${JSON.stringify(responseData)}`);
+				this.logger.error(`TG message send response: ${JSON.stringify(responseData)}`);
 			}
 			throw error;
 		}

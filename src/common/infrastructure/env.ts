@@ -4,7 +4,7 @@ const EnvSchema = z.object({
 	PORT: z.coerce.number().default(8080),
 
 	DATABASE_URL: z.string(),
-	CLIENT_URL: z.string().default('http://localhost:3000'),
+	CLIENT_URL: z.url().default('http://localhost:3000'),
 
 	TG_BOT_TOKEN: z.string(),
 

@@ -49,9 +49,13 @@ export class EventsController {
 			description: createEventDto.description,
 			start: createEventDto.start,
 			end: createEventDto.end,
+
 			createdById: user.id,
 			spaceId: currentSpaceId,
 			reminders: createEventDto.reminders ?? [],
+
+			isNotifyMessage: createEventDto.isNotifyMessage,
+			notifyMessage: createEventDto.notifyMessage,
 		});
 		const response = toEventResponse(event);
 		return formatResponse(response, 'Напоминание создано');

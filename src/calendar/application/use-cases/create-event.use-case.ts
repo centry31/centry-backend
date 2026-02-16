@@ -12,6 +12,7 @@ import {
 	REMINDER_SCHEDULER,
 	ReminderScheduler,
 } from 'calendar/application/ports/reminder-scheduler/reminder-scheduler.port';
+import { TG_NOTIFIER, TgNotifier } from 'calendar/application/ports/tg-notifier/tg-notifier.port';
 
 import { HttpException, HttpStatus, Inject } from '@nestjs/common';
 import { runUseCase } from 'common/application/errors/run-use-case';
@@ -22,9 +23,14 @@ type Cmd = {
 	description: string | null;
 	start: Date;
 	end: Date;
+
 	spaceId: string;
 	createdById: string;
+
 	reminders: Reminder[];
+
+	isNotifyMessage?: boolean;
+	notifyMessage?: string;
 };
 
 type Reminder = {
@@ -41,14 +47,41 @@ export class CreateEventUseCase {
 
 		@Inject(REMINDER_SCHEDULER)
 		private readonly reminderScheduler: ReminderScheduler,
+
+		@Inject(TG_NOTIFIER)
+		private readonly tgNotifier: TgNotifier,
 	) {}
+
+	private buildNotifyMessage = (event: Event, notifyMessage?: string) => {
+		const start = event.start.value;
+		const end = event.end.value;
+
+		const formatDate = (date: Date) =>
+			date.toLocaleString('ru-RU', {
+				day: '2-digit',
+				month: '2-digit',
+				year: 'numeric',
+				hour: '2-digit',
+				minute: '2-digit',
+			});
+
+		return [
+			`📅 <b>Новое событие</b>`,
+			`<b>${event.title}</b>`,
+			event.description ? `📝 ${event.description}` : null,
+			`🕒 <b>Начало:</b> ${formatDate(start)}`,
+			`⏳ <b>Конец:</b> ${formatDate(end)}`,
+			notifyMessage ? `💬 ${notifyMessage}` : null,
+		]
+			.filter(Boolean)
+			.join('\n');
+	};
 
 	async execute(cmd: Cmd): Promise<Event> {
 		return runUseCase(async () => {
-			const activeTargets =
-				cmd.reminders.length > 0
-					? await this.spaceTgChatQuery.getActiveTargetsBySpaceId(cmd.spaceId)
-					: [];
+			const activeTargets = await this.spaceTgChatQuery.getActiveTargetsBySpaceId(
+				cmd.spaceId,
+			);
 
 			if (cmd.reminders.length > 0 && activeTargets.length === 0) {
 				throw new HttpException(
@@ -94,6 +127,17 @@ export class CreateEventUseCase {
 						reminderId: reminder.id,
 						offsetMinutes: reminder.offsetMinutes,
 						targets: activeTargets,
+					});
+				}
+			}
+
+			// TODO WARNING: тг сервис может упасть и тогда будет прикол
+			if (cmd.isNotifyMessage) {
+				for (const targetChat of activeTargets) {
+					await this.tgNotifier.send({
+						chatId: targetChat.chatId,
+						messageThreadId: targetChat.messageThreadId,
+						text: this.buildNotifyMessage(createdEvent, cmd.notifyMessage),
 					});
 				}
 			}
