@@ -1,7 +1,9 @@
 import { InitAuthUseCase } from '@users/application/use-cases/auth/init-auth.use-case';
-import { TelegramAuthUseCase } from '@users/application/use-cases/auth/telegram-auth.use-case';
+import { TelegramMiniAppAuthUseCase } from '@users/application/use-cases/auth/telegram-mini-app-auth.use-case';
+import { TelegramWidgetAuthUseCase } from 'users/application/use-cases/auth/telegram-widget-auth-use.case';
 
-import { TelegramAuthDto } from './dto/auth/telegram-auth.dto';
+import { TelegramMiniAppAuthDto } from './dto/auth/telegram-mini-app-auth.dto';
+import { TelegramWidgetAuthDto } from './dto/auth/telegram-widget-auth.dto';
 import { toUserResponse } from './dto/user/user-response.mapper';
 import { JwtAuthGuard } from './guard/auth/jwt-auth.guard';
 
@@ -12,7 +14,8 @@ import { formatResponse } from 'common/utils/response.util';
 @Controller('auth')
 export class AuthController {
 	constructor(
-		private readonly telegramAuthUseCase: TelegramAuthUseCase,
+		private readonly telegramWidgetAuthUseCase: TelegramWidgetAuthUseCase,
+		private readonly telegramMiniAppAuthUseCase: TelegramMiniAppAuthUseCase,
 		private readonly initAuthUseCase: InitAuthUseCase,
 	) {}
 
@@ -24,9 +27,15 @@ export class AuthController {
 		return formatResponse(response, 'Пользователь проинициализирован');
 	}
 
-	@Post('telegram')
-	async telegramAuth(@Body() telegramAuthDto: TelegramAuthDto) {
-		const token = await this.telegramAuthUseCase.execute(telegramAuthDto);
-		return formatResponse(token, 'Авторизация через телеграм прошла успешно');
+	@Post('telegram-widget')
+	async telegramWidgetAuth(@Body() telegramWidgetAuthDto: TelegramWidgetAuthDto) {
+		const token = await this.telegramWidgetAuthUseCase.execute(telegramWidgetAuthDto);
+		return formatResponse(token, 'Авторизация через Telegram Widget прошла успешно');
+	}
+
+	@Post('telegram-mini-app')
+	async telegramMiniAppAuth(@Body() dto: TelegramMiniAppAuthDto) {
+		const token = await this.telegramMiniAppAuthUseCase.execute(dto.initData);
+		return formatResponse(token, 'Авторизация через Telegram Mini App прошла успешно');
 	}
 }

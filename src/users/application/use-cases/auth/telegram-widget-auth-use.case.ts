@@ -22,7 +22,7 @@ type Cmd = {
 	photo_url?: string;
 };
 
-export class TelegramAuthUseCase {
+export class TelegramWidgetAuthUseCase {
 	constructor(
 		@Inject(USER_REPOSITORY) private readonly userRepository: UserRepository,
 		@Inject(TOKEN_SERVICE) private readonly tokenService: TokenService,
