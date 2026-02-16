@@ -2,10 +2,7 @@ import {
 	EVENT_REPOSITORY,
 	EventRepository,
 } from 'calendar/application/ports/event/event.repository';
-import {
-	REMINDER_TG_NOTIFIER,
-	ReminderTgNotifier,
-} from 'calendar/application/ports/reminder-tg-notifier/reminder-tg-notifier.port';
+import { TG_NOTIFIER, TgNotifier } from 'calendar/application/ports/tg-notifier/tg-notifier.port';
 
 import type { ReminderJobData } from './bull-reminder.scheduler';
 import { REMINDER_JOB_NAME, REMINDER_QUEUE_NAME } from './reminder-queue.constants';
@@ -19,8 +16,8 @@ export class ReminderProcessor extends WorkerHost {
 	private readonly logger = new Logger(ReminderProcessor.name);
 
 	constructor(
-		@Inject(REMINDER_TG_NOTIFIER)
-		private readonly notifier: ReminderTgNotifier,
+		@Inject(TG_NOTIFIER)
+		private readonly notifier: TgNotifier,
 
 		@Inject(EVENT_REPOSITORY)
 		private readonly eventRepository: EventRepository,
