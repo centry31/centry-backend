@@ -1,0 +1,32 @@
+import {
+	SPACE_MEMBER_REPOSITORY,
+	SpaceMemberRepository,
+} from '@spaces/application/ports/space-member/space-member.repository';
+
+import { Inject } from '@nestjs/common';
+import { runUseCase } from 'common/application/errors/run-use-case';
+import { USER_QUERY, UserQuery } from 'users';
+
+type Cmd = {
+	spaceId: string;
+};
+
+export class GetSpaceMembersUseCase {
+	constructor(
+		@Inject(SPACE_MEMBER_REPOSITORY)
+		private readonly spaceMemberRepository: SpaceMemberRepository,
+
+		@Inject(USER_QUERY)
+		private readonly userQuery: UserQuery,
+	) {}
+
+	// TODO: подумать над тем, чтобы в дальнейшем ограничить эту ручку
+	async execute(cmd: Cmd) {
+		return runUseCase(async () => {
+			const members = await this.spaceMemberRepository.findManyBySpaceId(cmd.spaceId);
+			const userIds = members.map((member) => member.userId);
+
+			return this.userQuery.findByIds(userIds);
+		});
+	}
+}
