@@ -6,6 +6,8 @@ import { TelegramId as TgId } from 'common/domain/value-objects/telegram-id.vo';
 import { TOKEN_SERVICE, TokenService } from '@users/application/ports/jwt/token.service';
 import { USER_REPOSITORY, UserRepository } from '@users/application/ports/user/user.repository';
 
+import { ENV } from 'common/infrastructure/env';
+
 import { BadRequestException, Inject } from '@nestjs/common';
 import { runUseCase } from 'common/application/errors/run-use-case';
 
@@ -37,7 +39,7 @@ export class TelegramAuthUseCase {
 	 * */
 	private validateTelegramPayload(cmd: Cmd) {
 		const { hash, ...rest } = cmd;
-		const TG_BOT_TOKEN = process.env.TG_BOT_TOKEN;
+		const TG_BOT_TOKEN = ENV.TG_BOT_TOKEN;
 
 		// 1) data_check_string
 		const dataCheckString = Object.entries(rest)

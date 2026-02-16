@@ -1,3 +1,5 @@
+import { ENV } from 'common/infrastructure/env';
+
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
@@ -14,8 +16,8 @@ import { UsersModule } from 'users/users.module';
 		}),
 		BullModule.forRoot({
 			connection: {
-				host: process.env.REDIS_HOST || 'localhost',
-				port: +process.env.REDIS_PORT || 6379,
+				host: ENV.REDIS_HOST,
+				port: ENV.REDIS_PORT,
 			},
 		}),
 		UsersModule,

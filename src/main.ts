@@ -1,3 +1,7 @@
+// eslint-disable-next-line
+import 'dotenv/config';
+import { ENV } from 'common/infrastructure/env';
+
 import { AppModule } from './app.module';
 
 import { ValidationPipe } from '@nestjs/common';
@@ -5,15 +9,15 @@ import { NestFactory } from '@nestjs/core';
 import * as cookieParser from 'cookie-parser';
 
 const start = async () => {
-	const PORT = process.env.PORT || 8000;
-	const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
+	const PORT = ENV.PORT;
+	const CLIENT_URL = ENV.CLIENT_URL;
 	const app = await NestFactory.create(AppModule);
 
 	app.use(cookieParser());
 	app.setGlobalPrefix('api');
 	app.enableCors({
 		// TODO: remove
-		origin: [CLIENT_URL, 'https://34a19d1d7016.ngrok-free.app'],
+		origin: [CLIENT_URL],
 		credentials: true,
 	});
 

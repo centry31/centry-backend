@@ -9,6 +9,7 @@ import { USER_REPOSITORY } from './application/ports/user/user.repository';
 import { JwtTokenService } from './infrastructure/jwt/jwt-token.service';
 import { PrismaLoginMagicLinkRepository } from './infrastructure/prisma/login-magic-link/prisma-login-magic-link.repository';
 import { PrismaUserRepository } from './infrastructure/prisma/user/prisma-user.repository';
+import { ENV } from 'common/infrastructure/env';
 
 import { AuthController } from './interface/auth.controller';
 
@@ -20,8 +21,7 @@ import { PrismaModule } from 'prisma.module';
 	imports: [
 		PrismaModule,
 		JwtModule.register({
-			// TODO: выставить через env
-			secret: process.env.JWT_SECRET_KEY || 'SECRET',
+			secret: ENV.JWT_SECRET_KEY,
 			signOptions: {
 				expiresIn: '24h',
 			},

@@ -3,8 +3,9 @@ import type {
 	SendTelegramReminderCmd,
 } from 'calendar/application/ports/reminder-tg-notifier/reminder-tg-notifier.port';
 
+import { ENV } from 'common/infrastructure/env';
+
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 
 @Injectable()
@@ -13,14 +14,9 @@ export class HttpReminderNotifier implements ReminderTgNotifier {
 	private readonly endpointUrl: string;
 	private readonly apiToken?: string;
 
-	constructor(private readonly configService: ConfigService) {
-		const baseUrl =
-			this.configService.get<string>('TELEGRAM_BOT_SERVER_URL') ||
-			this.configService.get<string>('TG_BOT_SERVICE_URL');
-		const path =
-			this.configService.get<string>('TELEGRAM_BOT_REMINDER_PATH') ||
-			this.configService.get<string>('TG_BOT_REMINDER_PATH') ||
-			'/reminders';
+	constructor() {
+		const baseUrl = ENV.TG_BOT_SERVICE_URL;
+		const path = '/reminders';
 
 		if (!baseUrl) {
 			throw new InternalServerErrorException(
@@ -29,9 +25,7 @@ export class HttpReminderNotifier implements ReminderTgNotifier {
 		}
 
 		this.endpointUrl = this.joinUrl(baseUrl, path);
-		this.apiToken =
-			this.configService.get<string>('TELEGRAM_BOT_API_TOKEN') ||
-			this.configService.get<string>('TG_API_TOKEN');
+		this.apiToken = ENV.TG_API_TOKEN;
 	}
 
 	async send(cmd: SendTelegramReminderCmd): Promise<void> {
