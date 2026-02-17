@@ -1,6 +1,6 @@
 import { IsInt, IsNumber, IsOptional, IsString } from 'class-validator';
 
-export class TelegramAuthDto {
+export class TelegramWidgetAuthDto {
 	@IsInt()
 	id: string;
 

@@ -1,5 +1,6 @@
 import { InitAuthUseCase } from './application/use-cases/auth/init-auth.use-case';
-import { TelegramAuthUseCase } from './application/use-cases/auth/telegram-auth.use-case';
+import { TelegramMiniAppAuthUseCase } from './application/use-cases/auth/telegram-mini-app-auth.use-case';
+import { TelegramWidgetAuthUseCase } from './application/use-cases/auth/telegram-widget-auth-use.case';
 import { RegisterUserUseCase } from './application/use-cases/user/register-user.use-case';
 
 import { TOKEN_SERVICE } from './application/ports/jwt/token.service';
@@ -30,7 +31,8 @@ import { PrismaModule } from 'prisma.module';
 	controllers: [AuthController],
 	providers: [
 		RegisterUserUseCase,
-		TelegramAuthUseCase,
+		TelegramWidgetAuthUseCase,
+		TelegramMiniAppAuthUseCase,
 		InitAuthUseCase,
 
 		{ provide: USER_REPOSITORY, useClass: PrismaUserRepository },
