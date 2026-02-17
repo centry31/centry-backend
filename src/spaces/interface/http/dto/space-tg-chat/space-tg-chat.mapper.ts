@@ -1,4 +1,3 @@
-import type { DateTime } from 'common/domain/value-objects/date-time.vo';
 import type { SpaceTgChat } from 'spaces/domain/space-tg-chat.entity';
 
 type SpaceTgChatResponse = {
@@ -8,8 +7,8 @@ type SpaceTgChatResponse = {
 	title?: string;
 
 	isActive?: boolean;
-	createdAt?: DateTime;
-	updatedAt?: DateTime;
+	createdAt?: Date;
+	updatedAt?: Date;
 };
 
 export const toSpaceTgChatResponse = (spaceTgChat: SpaceTgChat): SpaceTgChatResponse => ({
@@ -19,6 +18,6 @@ export const toSpaceTgChatResponse = (spaceTgChat: SpaceTgChat): SpaceTgChatResp
 	title: spaceTgChat.title,
 
 	isActive: spaceTgChat.isActive,
-	createdAt: spaceTgChat.createdAt,
-	updatedAt: spaceTgChat.updatedAt,
+	createdAt: spaceTgChat.createdAt.value,
+	updatedAt: spaceTgChat.updatedAt.value,
 });
