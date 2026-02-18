@@ -37,7 +37,7 @@ export class EventsController {
 	async get(@Request() req: AuthenticatedRequest) {
 		const { currentSpaceId } = req;
 		const events = await this.getSpaceEventsUseCase.execute({ spaceId: currentSpaceId });
-		const response = events.map((reminder) => toEventResponse(reminder));
+		const response = events.map((event) => toEventResponse(event));
 		return formatResponse(response, 'Напоминания получены');
 	}
 
@@ -48,14 +48,17 @@ export class EventsController {
 			title: createEventDto.title,
 			description: createEventDto.description,
 			start: createEventDto.start,
-			end: createEventDto.end,
+			duration: createEventDto.duration,
 
 			createdById: user.id,
 			spaceId: currentSpaceId,
+
 			reminders: createEventDto.reminders ?? [],
 
 			isNotifyMessage: createEventDto.isNotifyMessage,
 			notifyMessage: createEventDto.notifyMessage,
+
+			frequency: createEventDto.frequency,
 		});
 		const response = toEventResponse(event);
 		return formatResponse(response, 'Напоминание создано');
@@ -71,11 +74,17 @@ export class EventsController {
 		await this.updateEventUseCase.execute({
 			eventId,
 			spaceId: currentSpaceId,
+
 			title: updateEventDto.title,
 			description: updateEventDto.description,
+
 			start: updateEventDto.start,
-			end: updateEventDto.end,
+			duration: updateEventDto.duration,
+
 			reminders: updateEventDto.reminders ?? [],
+			frequency: updateEventDto.frequency,
+
+			updateType: updateEventDto.updateType,
 		});
 		return formatResponse(null, 'Событие обновлено');
 	}

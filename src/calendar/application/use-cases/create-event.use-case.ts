@@ -1,5 +1,6 @@
 import * as crypto from 'crypto';
 
+import type { EventFrequency } from 'calendar/domain/event.entity';
 import { Event } from 'calendar/domain/event.entity';
 import { EventReminder } from 'calendar/domain/event-reminder.entity';
 import { DateTime } from 'common/domain/value-objects/date-time.vo';
@@ -21,8 +22,9 @@ import { SPACE_TG_CHAT_QUERY, SpaceTgChatQuery } from 'spaces';
 type Cmd = {
 	title: string;
 	description: string | null;
+
 	start: Date;
-	end: Date;
+	duration: number;
 
 	spaceId: string;
 	createdById: string;
@@ -31,6 +33,8 @@ type Cmd = {
 
 	isNotifyMessage?: boolean;
 	notifyMessage?: string;
+
+	frequency: EventFrequency;
 };
 
 type Reminder = {
@@ -54,7 +58,7 @@ export class CreateEventUseCase {
 
 	private buildNotifyMessage = (event: Event, notifyMessage?: string) => {
 		const start = event.start.value;
-		const end = event.end.value;
+		const end = new Date(start.getTime() + event.duration * 60_000);
 
 		const formatDate = (date: Date) =>
 			date.toLocaleString('ru-RU', {
@@ -91,7 +95,6 @@ export class CreateEventUseCase {
 			}
 
 			const startVo = DateTime.fromDate(cmd.start);
-			const endVo = DateTime.fromDate(cmd.end);
 			const createdAtVo = DateTime.now();
 
 			const event = new Event({
@@ -99,10 +102,11 @@ export class CreateEventUseCase {
 				title: cmd.title,
 				description: cmd.description,
 				start: startVo,
-				end: endVo,
+				duration: cmd.duration,
 				spaceId: cmd.spaceId,
 				createdById: cmd.createdById,
 				createdAt: createdAtVo,
+				frequency: cmd.frequency,
 			});
 			const reminders = cmd.reminders.map(
 				(reminder) =>

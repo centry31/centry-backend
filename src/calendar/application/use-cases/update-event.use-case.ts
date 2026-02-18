@@ -1,5 +1,6 @@
 import * as crypto from 'crypto';
 
+import type { EventFrequency } from 'calendar/domain/event.entity';
 import { EventReminder } from 'calendar/domain/event-reminder.entity';
 import { DateTime } from 'common/domain/value-objects/date-time.vo';
 
@@ -17,13 +18,19 @@ import { runUseCase } from 'common/application/errors/run-use-case';
 import { SPACE_TG_CHAT_QUERY, SpaceTgChatQuery } from 'spaces';
 
 type Cmd = {
-	eventId: string;
 	title: string;
 	description?: string;
+
 	start: Date;
-	end: Date;
+	duration: number;
+
+	eventId: string;
 	spaceId: string;
+
 	reminders: Reminder[];
+	frequency: EventFrequency;
+
+	updateType: 'ONE' | 'FUTURE';
 };
 
 type Reminder = {
@@ -63,12 +70,11 @@ export class UpdateEventUseCase {
 			const previousReminderIds = event.reminders.map((reminder) => reminder.id);
 
 			const startVo = DateTime.fromDate(cmd.start);
-			const endVo = DateTime.fromDate(cmd.end);
 			const createdAtVo = DateTime.now();
 
 			event.changeTitle(cmd.title);
 			event.changeDescription(cmd.description);
-			event.changeTimeRange(startVo, endVo);
+			event.changeTimeRange(startVo, cmd.duration);
 			event.clearReminders();
 
 			const reminders = cmd.reminders.map(

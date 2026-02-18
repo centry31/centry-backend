@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
 	ArrayMaxSize,
 	IsArray,
+	IsIn,
 	IsInt,
 	IsNotEmpty,
 	IsOptional,
@@ -33,8 +34,20 @@ export class UpdateEventDto {
 	@Type(() => Date)
 	start: Date;
 
-	@Type(() => Date)
-	end: Date;
+	@Type(() => Number)
+	@IsInt()
+	@Min(1)
+	duration: number;
+
+	@IsString()
+	@IsNotEmpty()
+	@IsIn(['ONE', 'FUTURE'])
+	updateType: 'ONE' | 'FUTURE';
+
+	@IsString()
+	@IsNotEmpty()
+	@IsIn(['NEVER', 'DAILY', 'WEEKLY', 'MONTHLY'])
+	frequency: 'NEVER' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
 
 	@IsOptional()
 	@IsArray()

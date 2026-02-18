@@ -169,13 +169,21 @@ model EventReminder {
   @@map("event_reminders")
 }
 
+enum Frequency {
+  NEVER
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
 model Event {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   title       String
   description String?
-  start       DateTime
-  end         DateTime
-  isAllDay    Boolean  @default(false)
+
+  start    DateTime
+  duration Int
+  isAllDay Boolean  @default(false)
 
   location String?
 
@@ -189,6 +197,8 @@ model Event {
   updatedAt DateTime @updatedAt
 
   reminders EventReminder[]
+
+  frequency Frequency @default(NEVER)
 
   @@map("events")
 }
