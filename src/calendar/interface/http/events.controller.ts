@@ -4,7 +4,9 @@ import { GetSpaceEventsUseCase } from 'calendar/application/use-cases/get-space-
 import { UpdateEventUseCase } from 'calendar/application/use-cases/update-event.use-case';
 
 import { CreateEventDto } from './dto/create-event.dto';
+import { DeleteEventQueryDto } from './dto/delete-event-query.dto';
 import { toEventResponse } from './dto/event-response.mapper';
+import { GetEventsQueryDto } from './dto/get-events-query.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 
 import {
@@ -15,6 +17,7 @@ import {
 	Param,
 	Patch,
 	Post,
+	Query,
 	Request,
 	UseGuards,
 } from '@nestjs/common';
@@ -34,9 +37,13 @@ export class EventsController {
 	) {}
 
 	@Get()
-	async get(@Request() req: AuthenticatedRequest) {
+	async get(@Query() query: GetEventsQueryDto, @Request() req: AuthenticatedRequest) {
 		const { currentSpaceId } = req;
-		const events = await this.getSpaceEventsUseCase.execute({ spaceId: currentSpaceId });
+		const events = await this.getSpaceEventsUseCase.execute({
+			spaceId: currentSpaceId,
+			from: query.from,
+			to: query.to,
+		});
 		const response = events.map((event) => toEventResponse(event));
 		return formatResponse(response, 'Напоминания получены');
 	}
@@ -85,14 +92,23 @@ export class EventsController {
 			frequency: updateEventDto.frequency,
 
 			updateType: updateEventDto.updateType,
+			orderIndex: updateEventDto.orderIndex,
 		});
 		return formatResponse(null, 'Событие обновлено');
 	}
 
 	@Delete(':eventId')
-	async delete(@Param('eventId') eventId: string, @Request() req: AuthenticatedRequest) {
+	async delete(
+		@Param('eventId') eventId: string,
+		@Query() query: DeleteEventQueryDto,
+		@Request() req: AuthenticatedRequest,
+	) {
 		const { currentSpaceId } = req;
-		await this.deleteEventUseCase.execute({ eventId, spaceId: currentSpaceId });
+		await this.deleteEventUseCase.execute({
+			eventId,
+			spaceId: currentSpaceId,
+			orderIndex: query.orderIndex,
+		});
 		return formatResponse(null, 'Уведомление удалено');
 	}
 }

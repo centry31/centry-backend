@@ -44,10 +44,16 @@ export class UpdateEventDto {
 	@IsIn(['ONE', 'FUTURE'])
 	updateType: 'ONE' | 'FUTURE';
 
+	@IsOptional()
+	@Type(() => Number)
+	@IsInt()
+	@Min(0)
+	orderIndex?: number;
+
 	@IsString()
 	@IsNotEmpty()
-	@IsIn(['NEVER', 'DAILY', 'WEEKLY', 'MONTHLY'])
-	frequency: 'NEVER' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
+	@IsIn(['NEVER', 'DAILY', 'WEEKLY', 'DOUBLE_WEEKLY', 'MONTHLY'])
+	frequency: 'NEVER' | 'DAILY' | 'WEEKLY' | 'DOUBLE_WEEKLY' | 'MONTHLY';
 
 	@IsOptional()
 	@IsArray()

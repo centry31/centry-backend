@@ -1,4 +1,10 @@
-import type { Event } from 'calendar/domain/event.entity';
+import type { MaterializedEvent } from 'calendar/application/use-cases/helpers/event-series';
+
+import type { Event, EventFrequency } from 'calendar/domain/event.entity';
+
+type EventReminderResponse = {
+	offsetMinutes: number;
+};
 
 type EventResponse = {
 	id: string;
@@ -11,32 +17,37 @@ type EventResponse = {
 	spaceId: string;
 	createdById: string;
 
-	reminders?: EventReminderResponse[];
-
-	frequency: Frequency;
+	frequency: EventFrequency;
+	orderIndex: number;
+	reminders: EventReminderResponse[];
 };
-type EventReminderResponse = {
-	offsetMinutes: number;
-};
-type Frequency = 'NEVER' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
 
-export const toEventResponse = (event: Event): EventResponse => {
-	const reminders: EventReminderResponse[] = event.reminders.map((reminder) => ({
-		offsetMinutes: reminder.offsetMinutes,
-	}));
+export const toEventResponse = (event: Event | MaterializedEvent): EventResponse => {
+	if ('orderIndex' in event) {
+		return {
+			id: event.id,
+			title: event.title,
+			description: event.description,
+			start: event.start,
+			duration: event.duration,
+			spaceId: event.spaceId,
+			createdById: event.createdById,
+			frequency: event.frequency,
+			orderIndex: event.orderIndex,
+			reminders: [],
+		};
+	}
+
 	return {
 		id: event.id,
 		title: event.title,
-		description: event.description,
-
+		description: event.description ?? null,
 		start: event.start.value,
 		duration: event.duration,
-
 		spaceId: event.spaceId,
 		createdById: event.createdById,
-
-		reminders,
-
 		frequency: event.frequency,
+		orderIndex: 0,
+		reminders: [],
 	};
 };

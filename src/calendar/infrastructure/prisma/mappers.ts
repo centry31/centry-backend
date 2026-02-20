@@ -1,4 +1,5 @@
 import { Event } from 'calendar/domain/event.entity';
+import { EventOverride } from 'calendar/domain/event-override.entity';
 import { EventReminder } from 'calendar/domain/event-reminder.entity';
 import { DateTime } from 'common/domain/value-objects/date-time.vo';
 
@@ -13,7 +14,7 @@ export type EventRow = {
 	spaceId: string;
 	createdById: string;
 
-	frequency: 'NEVER' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
+	frequency: 'NEVER' | 'DAILY' | 'WEEKLY' | 'DOUBLE_WEEKLY' | 'MONTHLY';
 
 	createdAt: Date;
 	updatedAt: Date;
@@ -28,6 +29,15 @@ export type EventReminderRow = {
 
 	createdAt: Date;
 	updatedAt: Date;
+};
+
+export type EventOverridePersistenceRow = {
+	id: string;
+	eventId: string;
+	orderIndex: number;
+	offset: number;
+	isDeleted: boolean;
+	isOffsetOnce: boolean;
 };
 
 export const toEventReminderDomain = (row: EventReminderRow): EventReminder =>
@@ -94,3 +104,15 @@ export const toReminderPersistence = (reminder: EventReminder): EventReminderRow
 	createdAt: reminder.createdAt.value,
 	updatedAt: new Date(),
 });
+
+export const toEventOverrideDomain = (row: EventOverridePersistenceRow): EventOverride =>
+	new EventOverride({
+		id: row.id,
+		eventId: row.eventId,
+
+		orderIndex: row.orderIndex,
+		offset: row.offset,
+
+		isDeleted: row.isDeleted,
+		isOffsetOnce: row.isOffsetOnce,
+	});

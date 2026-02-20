@@ -3,7 +3,7 @@ import type { DateTime } from 'common/domain/value-objects/date-time.vo';
 
 import type { EventReminder } from './event-reminder.entity';
 
-export type EventFrequency = 'NEVER' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
+export type EventFrequency = 'NEVER' | 'DAILY' | 'WEEKLY' | 'DOUBLE_WEEKLY' | 'MONTHLY';
 
 type EventProps = {
 	id: string;

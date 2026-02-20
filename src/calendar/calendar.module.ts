@@ -4,10 +4,12 @@ import { GetSpaceEventsUseCase } from './application/use-cases/get-space-events.
 import { UpdateEventUseCase } from './application/use-cases/update-event.use-case';
 
 import { EVENT_REPOSITORY } from './application/ports/event/event.repository';
+import { EVENT_OVERRIDE_REPOSITORY } from './application/ports/event-override/event-override.repository';
 import { REMINDER_SCHEDULER } from './application/ports/reminder-scheduler/reminder-scheduler.port';
 import { TG_NOTIFIER } from './application/ports/tg-notifier/tg-notifier.port';
 
 import { PrismaEventRepository } from './infrastructure/prisma/prisma-event.repository';
+import { PrismaEventOverrideRepository } from './infrastructure/prisma/prisma-event-override.repository';
 import { PrismaSpaceTgChatQuery } from './infrastructure/prisma/prisma-space-tg-chat.query';
 import { BullReminderScheduler } from './infrastructure/queue/bull-reminder.scheduler';
 import { ReminderProcessor } from './infrastructure/queue/reminder.processor';
@@ -33,6 +35,7 @@ import { UsersModule } from 'users';
 		ReminderProcessor,
 
 		{ provide: EVENT_REPOSITORY, useClass: PrismaEventRepository },
+		{ provide: EVENT_OVERRIDE_REPOSITORY, useClass: PrismaEventOverrideRepository },
 		{ provide: SPACE_TG_CHAT_QUERY, useClass: PrismaSpaceTgChatQuery },
 		{ provide: REMINDER_SCHEDULER, useClass: BullReminderScheduler },
 		{ provide: TG_NOTIFIER, useClass: HttpTgNotifier },

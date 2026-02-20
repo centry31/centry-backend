@@ -49,8 +49,8 @@ export class CreateEventDto {
 
 	@IsString()
 	@IsNotEmpty()
-	@IsIn(['NEVER', 'DAILY', 'WEEKLY', 'MONTHLY'])
-	frequency: 'NEVER' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
+	@IsIn(['NEVER', 'DAILY', 'WEEKLY', 'DOUBLE_WEEKLY', 'MONTHLY'])
+	frequency: 'NEVER' | 'DAILY' | 'WEEKLY' | 'DOUBLE_WEEKLY' | 'MONTHLY';
 
 	@IsOptional()
 	@IsBoolean()

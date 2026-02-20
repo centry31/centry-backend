@@ -173,6 +173,7 @@ enum Frequency {
   NEVER
   DAILY
   WEEKLY
+  DOUBLE_WEEKLY
   MONTHLY
 }
 
@@ -196,9 +197,27 @@ model Event {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  reminders EventReminder[]
+  reminders      EventReminder[]
+  eventOverrides EventOverride[]
 
   frequency Frequency @default(NEVER)
 
   @@map("events")
+}
+
+model EventOverride {
+  id String @id @default(uuid())
+
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId String
+
+  orderIndex Int
+  offset     Int
+
+  isDeleted    Boolean @default(false)
+  isOffsetOnce Boolean @default(true)
+
+  @@unique([eventId, orderIndex])
+  @@index([eventId, orderIndex])
+  @@map("event_overrides")
 }
