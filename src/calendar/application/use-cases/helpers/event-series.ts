@@ -1,11 +1,30 @@
 import type { Event, EventFrequency } from 'calendar/domain/event.entity';
 import type { EventOverride } from 'calendar/domain/event-override.entity';
+import type { EventReminder } from 'calendar/domain/event-reminder.entity';
 import { DomainValidationError } from 'common/domain/errors/domain.error';
 
 const DAY_MS = 86_400_000;
 const WEEK_MS = DAY_MS * 7;
 
-// Материализованный инстанс события, который отдается в API-слой.
+/** Проверяет, что значение является корректной датой JS с конечным timestamp. */
+const isValidDate = (value: Date): boolean =>
+	value instanceof Date && !Number.isNaN(value.getTime());
+
+/**
+ * Возвращает `true` для FUTURE-переопределения (не удалено и не одноразовое).
+ */
+const isFutureOverride = (override?: EventOverride): override is EventOverride => {
+	const hasOverride = Boolean(override);
+	if (!hasOverride) {
+		return false;
+	}
+
+	const isDeleted = override.isDeleted;
+	const isOneTimeOffset = override.isOffsetOnce;
+	return !isDeleted && !isOneTimeOffset;
+};
+
+/** Конкретный инстанс события, материализованный из определения серии. */
 export type MaterializedEvent = {
 	id: string;
 	title: string;
@@ -17,6 +36,7 @@ export type MaterializedEvent = {
 	createdById: string;
 	frequency: EventFrequency;
 	orderIndex: number;
+	reminders: readonly EventReminder[];
 };
 
 type MaterializeEventsInRangeParams = {
@@ -27,25 +47,28 @@ type MaterializeEventsInRangeParams = {
 };
 
 /**
- * Материализует все инстансы событий в окне [from, to).
+ * Материализует инстансы событий в полуинтервале `[from, to)`.
  *
- * Правила offset:
- * - isOffsetOnce=true: offset влияет только на текущий orderIndex.
- * - isOffsetOnce=false: offset задает абсолютный future-shift
- *   для текущего и следующих индексов до следующего FUTURE.
+ * Правила смещения:
+ * - `isOffsetOnce=true`: сдвиг применяется только к текущему orderIndex.
+ * - `isOffsetOnce=false`: сдвиг задает FUTURE-якорь и влияет на хвост,
+ *   пока не встретится следующий FUTURE-якорь.
  */
 export const materializeEventsInRange = (
 	params: MaterializeEventsInRangeParams,
 ): MaterializedEvent[] => {
 	const { events, overridesByEventId, from, to } = params;
 
-	if (!(from instanceof Date) || Number.isNaN(from.getTime())) {
+	const isValidFrom = isValidDate(from);
+	if (!isValidFrom) {
 		throw new DomainValidationError('from must be a valid date');
 	}
-	if (!(to instanceof Date) || Number.isNaN(to.getTime())) {
+	const isValidTo = isValidDate(to);
+	if (!isValidTo) {
 		throw new DomainValidationError('to must be a valid date');
 	}
-	if (from.getTime() >= to.getTime()) {
+	const isRangeInvalid = from.getTime() >= to.getTime();
+	if (isRangeInvalid) {
 		throw new DomainValidationError('from must be earlier than to');
 	}
 
@@ -54,6 +77,7 @@ export const materializeEventsInRange = (
 	const materialized: MaterializedEvent[] = [];
 
 	for (const event of events) {
+		// Готовим быстрый доступ к переопределениям по индексу серии.
 		const overrides = overridesByEventId[event.id] ?? [];
 		const overrideByOrder = new Map<number, EventOverride>();
 		for (const override of overrides) {
@@ -67,7 +91,8 @@ export const materializeEventsInRange = (
 		let lastOffset = 0;
 
 		for (let orderIndex = 0; ; orderIndex += 1) {
-			if (event.frequency === 'NEVER' && orderIndex > 0) {
+			const isNeverOrderBeyondFirst = event.frequency === 'NEVER' && orderIndex > 0;
+			if (isNeverOrderBeyondFirst) {
 				break;
 			}
 
@@ -79,7 +104,7 @@ export const materializeEventsInRange = (
 			if (override) {
 				if (override.isOffsetOnce) {
 					shiftForCurrent = override.offset;
-				} else if (!override.isDeleted) {
+				} else if (isFutureOverride(override)) {
 					lastOffset = override.offset;
 					shiftForCurrent = lastOffset;
 				}
@@ -87,13 +112,18 @@ export const materializeEventsInRange = (
 
 			const start = new Date(baseStart.getTime() + shiftForCurrent);
 			const repeatUntilMillis = event.repeatUntil ? event.repeatUntil.value.getTime() : null;
-			if (repeatUntilMillis !== null && start.getTime() > repeatUntilMillis) {
+			const exceedsRepeatUntil =
+				repeatUntilMillis !== null && start.getTime() > repeatUntilMillis;
+			if (exceedsRepeatUntil) {
 				break;
 			}
 
-			if (!override?.isDeleted) {
+			const isDeletedOccurrence = Boolean(override?.isDeleted);
+			if (!isDeletedOccurrence) {
 				const startMillis = start.getTime();
-				if (startMillis >= fromMillis && startMillis < toMillis) {
+				const isWithinRequestedWindow = startMillis >= fromMillis && startMillis < toMillis;
+				if (isWithinRequestedWindow) {
+					// Добавляем материализованный инстанс в ответ API-слоя.
 					materialized.push({
 						id: event.id,
 						title: event.title,
@@ -105,6 +135,7 @@ export const materializeEventsInRange = (
 						createdById: event.createdById,
 						frequency: event.frequency,
 						orderIndex,
+						reminders: event.reminders,
 					});
 				}
 			}
@@ -114,14 +145,16 @@ export const materializeEventsInRange = (
 			}
 
 			// Можно завершать скан, когда:
-			// 1) прошли все known override-точки;
+			// 1) прошли все известные точки переопределений;
 			// 2) текущий старт уже правее окна.
-			if (orderIndex > maxOverrideOrder && start.getTime() >= toMillis) {
+			const canStopScan = orderIndex > maxOverrideOrder && start.getTime() >= toMillis;
+			if (canStopScan) {
 				break;
 			}
 		}
 	}
 
+	// Стабильная сортировка по времени, затем по событию и порядку в серии.
 	materialized.sort((a, b) => {
 		const byStart = a.start.getTime() - b.start.getTime();
 		if (byStart !== 0) {
@@ -136,6 +169,11 @@ export const materializeEventsInRange = (
 	return materialized;
 };
 
+/**
+ * Материализует один инстанс по индексу серии с учетом цепочки переопределений и repeatUntil.
+ *
+ * @returns `null`, если индекс выходит за границы серии.
+ */
 export const materializeEventOrder = (params: {
 	event: Event;
 	overrides: EventOverride[];
@@ -143,11 +181,13 @@ export const materializeEventOrder = (params: {
 }): { start: Date; isDeleted: boolean } | null => {
 	const { event, overrides, orderIndex } = params;
 
-	if (!Number.isInteger(orderIndex) || orderIndex < 0) {
+	const hasValidOrderIndex = Number.isInteger(orderIndex) && orderIndex >= 0;
+	if (!hasValidOrderIndex) {
 		throw new DomainValidationError('orderIndex must be >= 0');
 	}
 
-	if (event.frequency === 'NEVER' && orderIndex !== 0) {
+	const isNeverOrderBeyondFirst = event.frequency === 'NEVER' && orderIndex !== 0;
+	if (isNeverOrderBeyondFirst) {
 		return null;
 	}
 
@@ -156,6 +196,7 @@ export const materializeEventOrder = (params: {
 		overrideByOrder.set(override.orderIndex, override);
 	}
 
+	// Последовательно восстанавливаем активный FUTURE-сдвиг до целевого индекса.
 	let lastOffset = 0;
 	for (let i = 0; i <= orderIndex; i += 1) {
 		const baseStart = getTheoreticalStart(event.start.value, event.frequency, i);
@@ -165,14 +206,17 @@ export const materializeEventOrder = (params: {
 		if (override) {
 			if (override.isOffsetOnce) {
 				shiftForCurrent = override.offset;
-			} else if (!override.isDeleted) {
+			} else if (isFutureOverride(override)) {
 				lastOffset = override.offset;
 				shiftForCurrent = lastOffset;
 			}
 		}
 
 		const start = new Date(baseStart.getTime() + shiftForCurrent);
-		if (event.repeatUntil && start.getTime() > event.repeatUntil.value.getTime()) {
+		const exceedsRepeatUntil = event.repeatUntil
+			? start.getTime() > event.repeatUntil.value.getTime()
+			: false;
+		if (exceedsRepeatUntil) {
 			return null;
 		}
 
@@ -187,7 +231,7 @@ export const materializeEventOrder = (params: {
 	return null;
 };
 
-// Теоретический старт инстанса без учета override-ов.
+/** Вычисляет теоретический старт инстанса без учета сдвигов из переопределений. */
 export const getTheoreticalStart = (
 	baseStart: Date,
 	frequency: EventFrequency,
@@ -209,7 +253,9 @@ export const getTheoreticalStart = (
 	}
 };
 
-// Monthly-частота: при переполнении дня месяца делаем clamp к последнему дню.
+/**
+ * Добавляет месяцы в UTC с ограничением на последний день целевого месяца.
+ */
 const addMonthsClampedUtc = (date: Date, months: number): Date => {
 	const year = date.getUTCFullYear();
 	const month = date.getUTCMonth();

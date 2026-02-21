@@ -158,14 +158,20 @@ model EventReminder {
   // кому и куда шлём
   // userId String? // null = всем участникам; иначе персонально
 
-  scheduledAt DateTime? // можно преформировать абсолютное время
-  sentAt      DateTime?
+  // ближайший запланированный инстанс reminder
+  nextOrderIndex      Int?
+  nextOccurrenceStart DateTime?
+  scheduledAt         DateTime?
+
+  // время последней успешной отправки
+  sentAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([eventId])
   @@index([scheduledAt])
+  @@index([nextOccurrenceStart])
   @@map("event_reminders")
 }
 

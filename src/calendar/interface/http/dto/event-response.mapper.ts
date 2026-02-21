@@ -24,6 +24,10 @@ type EventResponse = {
 };
 
 export const toEventResponse = (event: Event | MaterializedEvent): EventResponse => {
+	const reminders: EventReminderResponse[] = event.reminders.map((reminder) => ({
+		offsetMinutes: reminder.offsetMinutes,
+	}));
+
 	if ('orderIndex' in event) {
 		return {
 			id: event.id,
@@ -36,7 +40,7 @@ export const toEventResponse = (event: Event | MaterializedEvent): EventResponse
 			createdById: event.createdById,
 			frequency: event.frequency,
 			orderIndex: event.orderIndex,
-			reminders: [],
+			reminders,
 		};
 	}
 
@@ -51,6 +55,6 @@ export const toEventResponse = (event: Event | MaterializedEvent): EventResponse
 		createdById: event.createdById,
 		frequency: event.frequency,
 		orderIndex: 0,
-		reminders: [],
+		reminders,
 	};
 };

@@ -25,6 +25,8 @@ export type EventReminderRow = {
 	eventId: string;
 
 	offsetMinutes: number;
+	nextOrderIndex: number | null;
+	nextOccurrenceStart: Date | null;
 	scheduledAt: Date | null;
 	sentAt: Date | null;
 
@@ -47,6 +49,10 @@ export const toEventReminderDomain = (row: EventReminderRow): EventReminder =>
 		eventId: row.eventId,
 
 		offsetMinutes: row.offsetMinutes,
+		nextOrderIndex: row.nextOrderIndex ?? undefined,
+		nextOccurrenceStart: row.nextOccurrenceStart
+			? DateTime.fromDate(row.nextOccurrenceStart)
+			: undefined,
 		scheduledAt: row.scheduledAt ? DateTime.fromDate(row.scheduledAt) : undefined,
 		sentAt: row.sentAt ? DateTime.fromDate(row.sentAt) : undefined,
 
@@ -77,7 +83,7 @@ export const toEventDomain = (row: EventRow, reminderRows: EventReminderRow[] = 
 	});
 };
 
-// Для записи — отдаём БЕЗ reminders:
+// Для записи в БД — без поля напоминаний:
 export const toEventPersistence = (event: Event): EventRow => ({
 	id: event.id,
 	title: event.title,
@@ -101,6 +107,8 @@ export const toReminderPersistence = (reminder: EventReminder): EventReminderRow
 	eventId: reminder.eventId,
 
 	offsetMinutes: reminder.offsetMinutes,
+	nextOrderIndex: reminder.nextOrderIndex ?? null,
+	nextOccurrenceStart: reminder.nextOccurrenceStart ? reminder.nextOccurrenceStart.value : null,
 	scheduledAt: reminder.scheduledAt ? reminder.scheduledAt.value : null,
 	sentAt: reminder.sentAt ? reminder.sentAt.value : null,
 

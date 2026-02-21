@@ -13,6 +13,9 @@ const EnvSchema = z.object({
 	REDIS_PORT: z.coerce.number(),
 	REDIS_HOST: z.string(),
 
+	BULL_BOARD_USERNAME: z.string().optional(),
+	BULL_BOARD_PASSWORD: z.string().optional(),
+
 	TG_BOT_SERVICE_URL: z.string(),
 	TG_API_TOKEN: z.string(),
 });
