@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
 	ArrayMaxSize,
 	IsArray,
+	IsDate,
 	IsIn,
 	IsInt,
 	IsNotEmpty,
@@ -33,6 +34,11 @@ export class UpdateEventDto {
 
 	@Type(() => Date)
 	start: Date;
+
+	@IsOptional()
+	@Type(() => Date)
+	@IsDate()
+	repeatUntil?: Date;
 
 	@Type(() => Number)
 	@IsInt()

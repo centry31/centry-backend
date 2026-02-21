@@ -11,6 +11,7 @@ export type MaterializedEvent = {
 	title: string;
 	description: string | null;
 	start: Date;
+	repeatUntil: Date | null;
 	duration: number;
 	spaceId: string;
 	createdById: string;
@@ -85,6 +86,10 @@ export const materializeEventsInRange = (
 			}
 
 			const start = new Date(baseStart.getTime() + shiftForCurrent);
+			const repeatUntilMillis = event.repeatUntil ? event.repeatUntil.value.getTime() : null;
+			if (repeatUntilMillis !== null && start.getTime() > repeatUntilMillis) {
+				break;
+			}
 
 			if (!override?.isDeleted) {
 				const startMillis = start.getTime();
@@ -94,6 +99,7 @@ export const materializeEventsInRange = (
 						title: event.title,
 						description: event.description ?? null,
 						start,
+						repeatUntil: event.repeatUntil ? event.repeatUntil.value : null,
 						duration: event.duration,
 						spaceId: event.spaceId,
 						createdById: event.createdById,
@@ -128,6 +134,57 @@ export const materializeEventsInRange = (
 	});
 
 	return materialized;
+};
+
+export const materializeEventOrder = (params: {
+	event: Event;
+	overrides: EventOverride[];
+	orderIndex: number;
+}): { start: Date; isDeleted: boolean } | null => {
+	const { event, overrides, orderIndex } = params;
+
+	if (!Number.isInteger(orderIndex) || orderIndex < 0) {
+		throw new DomainValidationError('orderIndex must be >= 0');
+	}
+
+	if (event.frequency === 'NEVER' && orderIndex !== 0) {
+		return null;
+	}
+
+	const overrideByOrder = new Map<number, EventOverride>();
+	for (const override of overrides) {
+		overrideByOrder.set(override.orderIndex, override);
+	}
+
+	let lastOffset = 0;
+	for (let i = 0; i <= orderIndex; i += 1) {
+		const baseStart = getTheoreticalStart(event.start.value, event.frequency, i);
+		const override = overrideByOrder.get(i);
+
+		let shiftForCurrent = lastOffset;
+		if (override) {
+			if (override.isOffsetOnce) {
+				shiftForCurrent = override.offset;
+			} else if (!override.isDeleted) {
+				lastOffset = override.offset;
+				shiftForCurrent = lastOffset;
+			}
+		}
+
+		const start = new Date(baseStart.getTime() + shiftForCurrent);
+		if (event.repeatUntil && start.getTime() > event.repeatUntil.value.getTime()) {
+			return null;
+		}
+
+		if (i === orderIndex) {
+			return {
+				start,
+				isDeleted: Boolean(override?.isDeleted),
+			};
+		}
+	}
+
+	return null;
 };
 
 // Теоретический старт инстанса без учета override-ов.

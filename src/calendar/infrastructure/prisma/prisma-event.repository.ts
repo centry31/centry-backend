@@ -69,6 +69,7 @@ export class PrismaEventRepository implements EventRepository {
 					title: dataEvent.title,
 					description: dataEvent.description,
 					start: dataEvent.start,
+					repeatUntil: dataEvent.repeatUntil,
 					duration: dataEvent.duration,
 					frequency: dataEvent.frequency,
 				},

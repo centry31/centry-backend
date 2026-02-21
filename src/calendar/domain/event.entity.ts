@@ -11,6 +11,7 @@ type EventProps = {
 	description?: string;
 
 	start: DateTime;
+	repeatUntil?: DateTime;
 	duration: number;
 
 	spaceId: string;
@@ -31,6 +32,7 @@ export class Event {
 	private _title: string;
 	private _description?: string;
 	private _start: DateTime;
+	private _repeatUntil?: DateTime;
 	private _duration: number;
 	private _reminders: EventReminder[];
 	private _frequency: EventFrequency = 'NEVER';
@@ -44,6 +46,7 @@ export class Event {
 		this._title = this.normalizeTitle(props.title);
 		this._description = props.description;
 		this._start = props.start;
+		this._repeatUntil = props.repeatUntil;
 		this._duration = props.duration;
 
 		this._reminders = props.reminders ? props.reminders.slice() : [];
@@ -67,6 +70,10 @@ export class Event {
 
 	get duration() {
 		return this._duration;
+	}
+
+	get repeatUntil(): DateTime | undefined {
+		return this._repeatUntil;
 	}
 
 	get reminders(): readonly EventReminder[] {
@@ -112,6 +119,10 @@ export class Event {
 		this._start = start;
 		// пересчитать абсолютные напоминания, если используем scheduledAt = start - offset
 		this._reminders = this._reminders.map((r) => r.recalculateFor(start));
+	}
+
+	changeRepeatUntil(repeatUntil?: DateTime): void {
+		this._repeatUntil = repeatUntil;
 	}
 
 	changeTimeRange(start: DateTime, duration: number): void {

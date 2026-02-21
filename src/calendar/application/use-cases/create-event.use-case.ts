@@ -24,6 +24,7 @@ type Cmd = {
 	description: string | null;
 
 	start: Date;
+	repeatUntil?: Date;
 	duration: number;
 
 	spaceId: string;
@@ -95,13 +96,26 @@ export class CreateEventUseCase {
 			}
 
 			const startVo = DateTime.fromDate(cmd.start);
+			const repeatUntilVo = cmd.repeatUntil ? DateTime.fromDate(cmd.repeatUntil) : undefined;
 			const createdAtVo = DateTime.now();
+
+			if (
+				cmd.frequency !== 'NEVER' &&
+				repeatUntilVo &&
+				repeatUntilVo.value.getTime() < startVo.value.getTime()
+			) {
+				throw new HttpException(
+					'repeatUntil должен быть не раньше start для повторяющихся событий',
+					HttpStatus.BAD_REQUEST,
+				);
+			}
 
 			const event = new Event({
 				id: crypto.randomUUID(),
 				title: cmd.title,
 				description: cmd.description,
 				start: startVo,
+				repeatUntil: cmd.frequency === 'NEVER' ? undefined : repeatUntilVo,
 				duration: cmd.duration,
 				spaceId: cmd.spaceId,
 				createdById: cmd.createdById,

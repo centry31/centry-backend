@@ -12,6 +12,7 @@ type EventResponse = {
 
 	description: string | null;
 	start: Date;
+	repeatUntil: Date | null;
 	duration: number;
 
 	spaceId: string;
@@ -29,6 +30,7 @@ export const toEventResponse = (event: Event | MaterializedEvent): EventResponse
 			title: event.title,
 			description: event.description,
 			start: event.start,
+			repeatUntil: event.repeatUntil,
 			duration: event.duration,
 			spaceId: event.spaceId,
 			createdById: event.createdById,
@@ -43,6 +45,7 @@ export const toEventResponse = (event: Event | MaterializedEvent): EventResponse
 		title: event.title,
 		description: event.description ?? null,
 		start: event.start.value,
+		repeatUntil: event.repeatUntil ? event.repeatUntil.value : null,
 		duration: event.duration,
 		spaceId: event.spaceId,
 		createdById: event.createdById,

@@ -9,6 +9,7 @@ export type EventRow = {
 	description: string | null;
 
 	start: Date;
+	repeatUntil: Date | null;
 	duration: number;
 
 	spaceId: string;
@@ -62,6 +63,7 @@ export const toEventDomain = (row: EventRow, reminderRows: EventReminderRow[] = 
 		description: row.description ?? undefined,
 
 		start: DateTime.fromDate(row.start),
+		repeatUntil: row.repeatUntil ? DateTime.fromDate(row.repeatUntil) : undefined,
 		duration: row.duration,
 
 		spaceId: row.spaceId,
@@ -82,6 +84,7 @@ export const toEventPersistence = (event: Event): EventRow => ({
 	description: event.description ?? null,
 
 	start: event.start.value,
+	repeatUntil: event.repeatUntil ? event.repeatUntil.value : null,
 	duration: event.duration,
 
 	spaceId: event.spaceId,

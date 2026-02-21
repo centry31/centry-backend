@@ -3,6 +3,7 @@ import {
 	ArrayMaxSize,
 	IsArray,
 	IsBoolean,
+	IsDate,
 	IsIn,
 	IsInt,
 	IsNotEmpty,
@@ -34,6 +35,11 @@ export class CreateEventDto {
 
 	@Type(() => Date)
 	start: Date;
+
+	@IsOptional()
+	@Type(() => Date)
+	@IsDate()
+	repeatUntil?: Date;
 
 	@Type(() => Number)
 	@IsInt()

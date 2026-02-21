@@ -55,6 +55,7 @@ export class EventsController {
 			title: createEventDto.title,
 			description: createEventDto.description,
 			start: createEventDto.start,
+			repeatUntil: createEventDto.repeatUntil,
 			duration: createEventDto.duration,
 
 			createdById: user.id,
@@ -86,6 +87,7 @@ export class EventsController {
 			description: updateEventDto.description,
 
 			start: updateEventDto.start,
+			repeatUntil: updateEventDto.repeatUntil,
 			duration: updateEventDto.duration,
 
 			reminders: updateEventDto.reminders ?? [],

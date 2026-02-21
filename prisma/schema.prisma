@@ -183,6 +183,7 @@ model Event {
   description String?
 
   start    DateTime
+  repeatUntil DateTime?
   duration Int
   isAllDay Boolean  @default(false)
 
