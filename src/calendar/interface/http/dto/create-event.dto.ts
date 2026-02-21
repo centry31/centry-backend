@@ -3,6 +3,8 @@ import {
 	ArrayMaxSize,
 	IsArray,
 	IsBoolean,
+	IsDate,
+	IsIn,
 	IsInt,
 	IsNotEmpty,
 	IsOptional,
@@ -34,8 +36,15 @@ export class CreateEventDto {
 	@Type(() => Date)
 	start: Date;
 
+	@IsOptional()
 	@Type(() => Date)
-	end: Date;
+	@IsDate()
+	repeatUntil?: Date;
+
+	@Type(() => Number)
+	@IsInt()
+	@Min(1)
+	duration: number;
 
 	@IsOptional()
 	@IsArray()
@@ -43,6 +52,11 @@ export class CreateEventDto {
 	@Type(() => CreateEventReminderDto)
 	@ArrayMaxSize(5)
 	reminders?: CreateEventReminderDto[];
+
+	@IsString()
+	@IsNotEmpty()
+	@IsIn(['NEVER', 'DAILY', 'WEEKLY', 'DOUBLE_WEEKLY', 'MONTHLY'])
+	frequency: 'NEVER' | 'DAILY' | 'WEEKLY' | 'DOUBLE_WEEKLY' | 'MONTHLY';
 
 	@IsOptional()
 	@IsBoolean()

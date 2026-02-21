@@ -3,16 +3,24 @@ import type { DateTime } from 'common/domain/value-objects/date-time.vo';
 
 import type { EventReminder } from './event-reminder.entity';
 
+export type EventFrequency = 'NEVER' | 'DAILY' | 'WEEKLY' | 'DOUBLE_WEEKLY' | 'MONTHLY';
+
 type EventProps = {
 	id: string;
 	title: string;
+	description?: string;
+
 	start: DateTime;
-	end: DateTime;
+	repeatUntil?: DateTime;
+	duration: number;
+
 	spaceId: string;
 	createdById: string;
 	createdAt: DateTime;
-	description?: string;
+
 	reminders?: EventReminder[]; // по умолчанию []
+
+	frequency: EventFrequency;
 };
 
 export class Event {
@@ -24,8 +32,10 @@ export class Event {
 	private _title: string;
 	private _description?: string;
 	private _start: DateTime;
-	private _end: DateTime;
+	private _repeatUntil?: DateTime;
+	private _duration: number;
 	private _reminders: EventReminder[];
+	private _frequency: EventFrequency = 'NEVER';
 
 	constructor(props: EventProps) {
 		this.id = props.id;
@@ -36,11 +46,14 @@ export class Event {
 		this._title = this.normalizeTitle(props.title);
 		this._description = props.description;
 		this._start = props.start;
-		this._end = props.end;
-		this._reminders = props.reminders ? props.reminders.slice() : [];
+		this._repeatUntil = props.repeatUntil;
+		this._duration = props.duration;
 
-		this.ensureStartBeforeEnd();
+		this._reminders = props.reminders ? props.reminders.slice() : [];
+		this._frequency = props.frequency;
+
 		this.ensureRemindersCoherent();
+		this.ensureDurationValid(this._duration);
 	}
 
 	get title(): string {
@@ -55,12 +68,20 @@ export class Event {
 		return this._start;
 	}
 
-	get end(): DateTime {
-		return this._end;
+	get duration() {
+		return this._duration;
+	}
+
+	get repeatUntil(): DateTime | undefined {
+		return this._repeatUntil;
 	}
 
 	get reminders(): readonly EventReminder[] {
 		return this._reminders;
+	}
+
+	get frequency() {
+		return this._frequency;
 	}
 
 	private normalizeTitle(title: string): string {
@@ -72,15 +93,17 @@ export class Event {
 		return normalizedTitle;
 	}
 
-	private ensureStartBeforeEnd(): void {
-		if (!this._start.isBefore(this._end)) {
-			throw new DomainValidationError('Event.start must be strictly before Event.end');
-		}
-	}
-
 	private ensureRemindersCoherent(): void {
 		for (const r of this._reminders) {
 			r.ensureCoherentWith(this._start);
+		}
+	}
+
+	private ensureDurationValid(duration: number): void {
+		if (!Number.isInteger(duration) || duration <= 0) {
+			throw new DomainValidationError(
+				'Duration must be a positive integer number of minutes',
+			);
 		}
 	}
 
@@ -93,27 +116,19 @@ export class Event {
 	}
 
 	changeStart(start: DateTime): void {
-		if (!start.isBefore(this._end)) {
-			throw new DomainValidationError('start must be before end');
-		}
 		this._start = start;
 		// пересчитать абсолютные напоминания, если используем scheduledAt = start - offset
 		this._reminders = this._reminders.map((r) => r.recalculateFor(start));
 	}
 
-	changeEnd(end: DateTime): void {
-		if (!this._start.isBefore(end)) {
-			throw new DomainValidationError('end must be after start');
-		}
-		this._end = end;
+	changeRepeatUntil(repeatUntil?: DateTime): void {
+		this._repeatUntil = repeatUntil;
 	}
 
-	changeTimeRange(start: DateTime, end: DateTime): void {
-		if (!start.isBefore(end)) {
-			throw new DomainValidationError('start must be before end');
-		}
+	changeTimeRange(start: DateTime, duration: number): void {
+		this.ensureDurationValid(duration);
 		this._start = start;
-		this._end = end;
+		this._duration = duration;
 		this._reminders = this._reminders.map((r) => r.recalculateFor(start));
 	}
 
@@ -133,5 +148,9 @@ export class Event {
 
 	clearReminders(): void {
 		this._reminders = [];
+	}
+
+	changeFrequency(frequency: EventFrequency): void {
+		this._frequency = frequency;
 	}
 }

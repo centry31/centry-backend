@@ -1,5 +1,6 @@
 import * as crypto from 'crypto';
 
+import type { EventFrequency } from 'calendar/domain/event.entity';
 import { Event } from 'calendar/domain/event.entity';
 import { EventReminder } from 'calendar/domain/event-reminder.entity';
 import { DateTime } from 'common/domain/value-objects/date-time.vo';
@@ -21,8 +22,10 @@ import { SPACE_TG_CHAT_QUERY, SpaceTgChatQuery } from 'spaces';
 type Cmd = {
 	title: string;
 	description: string | null;
+
 	start: Date;
-	end: Date;
+	repeatUntil?: Date;
+	duration: number;
 
 	spaceId: string;
 	createdById: string;
@@ -31,6 +34,8 @@ type Cmd = {
 
 	isNotifyMessage?: boolean;
 	notifyMessage?: string;
+
+	frequency: EventFrequency;
 };
 
 type Reminder = {
@@ -54,7 +59,7 @@ export class CreateEventUseCase {
 
 	private buildNotifyMessage = (event: Event, notifyMessage?: string) => {
 		const start = event.start.value;
-		const end = event.end.value;
+		const end = new Date(start.getTime() + event.duration * 60_000);
 
 		const formatDate = (date: Date) =>
 			date.toLocaleString('ru-RU', {
@@ -91,18 +96,31 @@ export class CreateEventUseCase {
 			}
 
 			const startVo = DateTime.fromDate(cmd.start);
-			const endVo = DateTime.fromDate(cmd.end);
+			const repeatUntilVo = cmd.repeatUntil ? DateTime.fromDate(cmd.repeatUntil) : undefined;
 			const createdAtVo = DateTime.now();
+
+			if (
+				cmd.frequency !== 'NEVER' &&
+				repeatUntilVo &&
+				repeatUntilVo.value.getTime() < startVo.value.getTime()
+			) {
+				throw new HttpException(
+					'repeatUntil должен быть не раньше start для повторяющихся событий',
+					HttpStatus.BAD_REQUEST,
+				);
+			}
 
 			const event = new Event({
 				id: crypto.randomUUID(),
 				title: cmd.title,
 				description: cmd.description,
 				start: startVo,
-				end: endVo,
+				repeatUntil: cmd.frequency === 'NEVER' ? undefined : repeatUntilVo,
+				duration: cmd.duration,
 				spaceId: cmd.spaceId,
 				createdById: cmd.createdById,
 				createdAt: createdAtVo,
+				frequency: cmd.frequency,
 			});
 			const reminders = cmd.reminders.map(
 				(reminder) =>
