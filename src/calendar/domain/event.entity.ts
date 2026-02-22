@@ -100,7 +100,8 @@ export class Event {
 	}
 
 	private ensureDurationValid(duration: number): void {
-		if (!Number.isInteger(duration) || duration <= 0) {
+		const hasValidDuration = Number.isInteger(duration) && duration > 0;
+		if (!hasValidDuration) {
 			throw new DomainValidationError(
 				'Duration must be a positive integer number of minutes',
 			);
@@ -117,7 +118,8 @@ export class Event {
 
 	changeStart(start: DateTime): void {
 		this._start = start;
-		// пересчитать абсолютные напоминания, если используем scheduledAt = start - offset
+		// Пересчитываем абсолютное время напоминаний по формуле:
+		// `scheduledAt = start - offset`.
 		this._reminders = this._reminders.map((r) => r.recalculateFor(start));
 	}
 

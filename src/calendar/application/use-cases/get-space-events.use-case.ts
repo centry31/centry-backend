@@ -21,7 +21,9 @@ type Cmd = {
 
 export class GetSpaceEventsUseCase {
 	constructor(
-		@Inject(EVENT_REPOSITORY) private readonly eventRepository: EventRepository,
+		@Inject(EVENT_REPOSITORY)
+		private readonly eventRepository: EventRepository,
+
 		@Inject(EVENT_OVERRIDE_REPOSITORY)
 		private readonly eventOverrideRepository: EventOverrideRepository,
 	) {}

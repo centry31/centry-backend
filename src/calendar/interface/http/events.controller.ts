@@ -1,7 +1,7 @@
 import { CreateEventUseCase } from 'calendar/application/use-cases/create-event.use-case';
 import { DeleteEventUseCase } from 'calendar/application/use-cases/delete-event.use-case';
 import { GetSpaceEventsUseCase } from 'calendar/application/use-cases/get-space-events.use-case';
-import { UpdateEventUseCase } from 'calendar/application/use-cases/update-event.use-case';
+import { UpdateEventUseCase } from 'calendar/application/use-cases/update-event/update-event.use-case';
 
 import { CreateEventDto } from './dto/create-event.dto';
 import { DeleteEventQueryDto } from './dto/delete-event-query.dto';
@@ -25,7 +25,7 @@ import { AuthenticatedRequest } from 'common/types/authenticated-request.interfa
 import { formatResponse } from 'common/utils/response.util';
 import { JwtAuthGuard } from 'users';
 
-// TODO: накинуть гварды
+// НУЖНО: подключить все необходимые guard-ы для календаря
 @UseGuards(JwtAuthGuard)
 @Controller('events')
 export class EventsController {
@@ -90,7 +90,7 @@ export class EventsController {
 			repeatUntil: updateEventDto.repeatUntil,
 			duration: updateEventDto.duration,
 
-			reminders: updateEventDto.reminders ?? [],
+			reminders: updateEventDto.reminders,
 			frequency: updateEventDto.frequency,
 
 			updateType: updateEventDto.updateType,

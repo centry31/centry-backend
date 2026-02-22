@@ -1,13 +1,8 @@
-import type { SpaceTgChatTarget } from 'spaces';
-
 export type ReminderScheduleEvent = {
-	eventId: string;
-	eventTitle: string;
-	eventStartAt: Date;
-
 	reminderId: string;
-	offsetMinutes: number;
-	targets: SpaceTgChatTarget[];
+	plannedOrderIndex: number;
+	plannedOccurrenceStartAt: Date;
+	scheduledAt: Date;
 };
 
 export interface ReminderScheduler {

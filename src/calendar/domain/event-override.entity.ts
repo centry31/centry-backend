@@ -18,10 +18,12 @@ export class EventOverride {
 	public readonly isOffsetOnce: boolean;
 
 	constructor(props: EventOverrideProps) {
-		if (!Number.isInteger(props.orderIndex) || props.orderIndex < 0) {
+		const hasValidOrderIndex = Number.isInteger(props.orderIndex) && props.orderIndex >= 0;
+		if (!hasValidOrderIndex) {
 			throw new DomainValidationError('orderIndex must be an integer >= 0');
 		}
-		if (!Number.isInteger(props.offset)) {
+		const hasValidOffset = Number.isInteger(props.offset);
+		if (!hasValidOffset) {
 			throw new DomainValidationError('offset must be an integer');
 		}
 

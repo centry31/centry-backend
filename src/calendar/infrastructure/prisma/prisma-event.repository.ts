@@ -1,6 +1,9 @@
 import type { Event } from 'calendar/domain/event.entity';
 
-import type { EventRepository } from 'calendar/application/ports/event/event.repository';
+import type {
+	EventRepository,
+	ReminderPlanningState,
+} from 'calendar/application/ports/event/event.repository';
 
 import { toEventDomain, toEventPersistence, toReminderPersistence } from './mappers';
 
@@ -10,6 +13,14 @@ import { PrismaService } from 'prisma.service';
 @Injectable()
 export class PrismaEventRepository implements EventRepository {
 	constructor(private readonly prisma: PrismaService) {}
+
+	async findById(id: string): Promise<Event | null> {
+		const row = await this.prisma.event.findUnique({
+			where: { id },
+			include: { reminders: true },
+		});
+		return row ? toEventDomain(row, row.reminders) : null;
+	}
 
 	async findByIdWithSpaceId(id: string, spaceId: string): Promise<Event | null> {
 		const row = await this.prisma.event.findUnique({
@@ -86,22 +97,74 @@ export class PrismaEventRepository implements EventRepository {
 
 	async delete(id: string, spaceId: string): Promise<void> {
 		await this.prisma.event.delete({ where: { id, spaceId } });
-		// благодаря onDelete: Cascade на relation, reminders удалятся сами
+		// Напоминания удаляются автоматически за счет каскадной связи в Prisma.
+	}
+
+	async findReminderPlanningState(reminderId: string): Promise<ReminderPlanningState | null> {
+		const row = await this.prisma.eventReminder.findUnique({
+			where: { id: reminderId },
+			select: {
+				id: true,
+				eventId: true,
+				offsetMinutes: true,
+				nextOrderIndex: true,
+				nextOccurrenceStart: true,
+				scheduledAt: true,
+				event: {
+					select: {
+						spaceId: true,
+						title: true,
+					},
+				},
+			},
+		});
+		if (!row) {
+			return null;
+		}
+
+		return {
+			reminderId: row.id,
+			eventId: row.eventId,
+			eventTitle: row.event.title,
+			spaceId: row.event.spaceId,
+			offsetMinutes: row.offsetMinutes,
+			nextOrderIndex: row.nextOrderIndex,
+			nextOccurrenceStart: row.nextOccurrenceStart,
+			scheduledAt: row.scheduledAt,
+		};
+	}
+
+	async updateReminderPlanningState(
+		reminderId: string,
+		data: {
+			nextOrderIndex: number | null;
+			nextOccurrenceStart: Date | null;
+			scheduledAt: Date | null;
+		},
+	): Promise<void> {
+		await this.prisma.eventReminder.updateMany({
+			where: { id: reminderId },
+			data: {
+				nextOrderIndex: data.nextOrderIndex,
+				nextOccurrenceStart: data.nextOccurrenceStart,
+				scheduledAt: data.scheduledAt,
+			},
+		});
 	}
 
 	async isReminderPending(reminderId: string): Promise<boolean> {
 		const row = await this.prisma.eventReminder.findFirst({
-			where: { id: reminderId, sentAt: null },
+			where: { id: reminderId, scheduledAt: { not: null } },
 			select: { id: true },
 		});
 
 		return !!row;
 	}
 
-	async markReminderSent(reminderId: string): Promise<void> {
+	async markReminderSent(reminderId: string, sentAt: Date = new Date()): Promise<void> {
 		await this.prisma.eventReminder.updateMany({
-			where: { id: reminderId, sentAt: null },
-			data: { sentAt: new Date() },
+			where: { id: reminderId },
+			data: { sentAt },
 		});
 	}
 }

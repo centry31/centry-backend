@@ -10,12 +10,12 @@ import {
 	EventRepository,
 } from 'calendar/application/ports/event/event.repository';
 import {
-	REMINDER_SCHEDULER,
-	ReminderScheduler,
-} from 'calendar/application/ports/reminder-scheduler/reminder-scheduler.port';
+	REMINDER_PLANNING,
+	ReminderPlanning,
+} from 'calendar/application/ports/reminder-planning/reminder-planning.port';
 import { TG_NOTIFIER, TgNotifier } from 'calendar/application/ports/tg-notifier/tg-notifier.port';
 
-import { HttpException, HttpStatus, Inject } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { runUseCase } from 'common/application/errors/run-use-case';
 import { SPACE_TG_CHAT_QUERY, SpaceTgChatQuery } from 'spaces';
 
@@ -42,6 +42,12 @@ type Reminder = {
 	offsetMinutes: number;
 };
 
+type CreateBuildData = {
+	event: Event;
+	activeTargets: Awaited<ReturnType<SpaceTgChatQuery['getActiveTargetsBySpaceId']>>;
+};
+
+@Injectable()
 export class CreateEventUseCase {
 	constructor(
 		@Inject(EVENT_REPOSITORY)
@@ -50,8 +56,8 @@ export class CreateEventUseCase {
 		@Inject(SPACE_TG_CHAT_QUERY)
 		private readonly spaceTgChatQuery: SpaceTgChatQuery,
 
-		@Inject(REMINDER_SCHEDULER)
-		private readonly reminderScheduler: ReminderScheduler,
+		@Inject(REMINDER_PLANNING)
+		private readonly reminderPlanningService: ReminderPlanning,
 
 		@Inject(TG_NOTIFIER)
 		private readonly tgNotifier: TgNotifier,
@@ -84,74 +90,12 @@ export class CreateEventUseCase {
 
 	async execute(cmd: Cmd): Promise<Event> {
 		return runUseCase(async () => {
-			const activeTargets = await this.spaceTgChatQuery.getActiveTargetsBySpaceId(
-				cmd.spaceId,
-			);
+			const buildData = await this.buildCreateData(cmd);
+			const createdEvent = await this.applyCreateOperations(buildData.event);
+			await this.applyCreateEffects(createdEvent.id);
 
-			if (cmd.reminders.length > 0 && activeTargets.length === 0) {
-				throw new HttpException(
-					'Для добавления напоминаний нужно привязать ТГ канал',
-					HttpStatus.BAD_REQUEST,
-				);
-			}
-
-			const startVo = DateTime.fromDate(cmd.start);
-			const repeatUntilVo = cmd.repeatUntil ? DateTime.fromDate(cmd.repeatUntil) : undefined;
-			const createdAtVo = DateTime.now();
-
-			if (
-				cmd.frequency !== 'NEVER' &&
-				repeatUntilVo &&
-				repeatUntilVo.value.getTime() < startVo.value.getTime()
-			) {
-				throw new HttpException(
-					'repeatUntil должен быть не раньше start для повторяющихся событий',
-					HttpStatus.BAD_REQUEST,
-				);
-			}
-
-			const event = new Event({
-				id: crypto.randomUUID(),
-				title: cmd.title,
-				description: cmd.description,
-				start: startVo,
-				repeatUntil: cmd.frequency === 'NEVER' ? undefined : repeatUntilVo,
-				duration: cmd.duration,
-				spaceId: cmd.spaceId,
-				createdById: cmd.createdById,
-				createdAt: createdAtVo,
-				frequency: cmd.frequency,
-			});
-			const reminders = cmd.reminders.map(
-				(reminder) =>
-					new EventReminder({
-						id: crypto.randomUUID(),
-						eventId: event.id,
-						createdAt: createdAtVo,
-						offsetMinutes: reminder.offsetMinutes,
-						updatedAt: createdAtVo,
-					}),
-			);
-			reminders.forEach((reminder) => event.addReminder(reminder));
-
-			const createdEvent = await this.eventRepository.create(event);
-
-			if (createdEvent.reminders.length > 0) {
-				for (const reminder of createdEvent.reminders) {
-					await this.reminderScheduler.schedule({
-						eventId: createdEvent.id,
-						eventTitle: createdEvent.title,
-						eventStartAt: createdEvent.start.value,
-						reminderId: reminder.id,
-						offsetMinutes: reminder.offsetMinutes,
-						targets: activeTargets,
-					});
-				}
-			}
-
-			// TODO WARNING: тг сервис может упасть и тогда будет прикол
 			if (cmd.isNotifyMessage) {
-				for (const targetChat of activeTargets) {
+				for (const targetChat of buildData.activeTargets) {
 					await this.tgNotifier.send({
 						chatId: targetChat.chatId,
 						messageThreadId: targetChat.messageThreadId,
@@ -162,5 +106,73 @@ export class CreateEventUseCase {
 
 			return createdEvent;
 		});
+	}
+
+	private async buildCreateData(cmd: Cmd): Promise<CreateBuildData> {
+		const activeTargets = await this.spaceTgChatQuery.getActiveTargetsBySpaceId(cmd.spaceId);
+
+		const hasReminderPayload = cmd.reminders.length > 0;
+		const hasNoActiveTargets = activeTargets.length === 0;
+		const remindersWithoutTarget = hasReminderPayload && hasNoActiveTargets;
+		if (remindersWithoutTarget) {
+			throw new HttpException(
+				'Для добавления напоминаний нужно привязать ТГ канал',
+				HttpStatus.BAD_REQUEST,
+			);
+		}
+
+		const startVo = DateTime.fromDate(cmd.start);
+		const repeatUntilVo = cmd.repeatUntil ? DateTime.fromDate(cmd.repeatUntil) : undefined;
+		const createdAtVo = DateTime.now();
+
+		const isRecurringEvent = cmd.frequency !== 'NEVER';
+		const isRepeatUntilBeforeStart = repeatUntilVo
+			? repeatUntilVo.value.getTime() < startVo.value.getTime()
+			: false;
+		const hasInvalidRepeatUntil = isRecurringEvent && isRepeatUntilBeforeStart;
+		if (hasInvalidRepeatUntil) {
+			throw new HttpException(
+				'repeatUntil должен быть не раньше start для повторяющихся событий',
+				HttpStatus.BAD_REQUEST,
+			);
+		}
+
+		const event = new Event({
+			id: crypto.randomUUID(),
+			title: cmd.title,
+			description: cmd.description,
+			start: startVo,
+			repeatUntil: cmd.frequency === 'NEVER' ? undefined : repeatUntilVo,
+			duration: cmd.duration,
+			spaceId: cmd.spaceId,
+			createdById: cmd.createdById,
+			createdAt: createdAtVo,
+			frequency: cmd.frequency,
+		});
+
+		const reminders = cmd.reminders.map(
+			(reminder) =>
+				new EventReminder({
+					id: crypto.randomUUID(),
+					eventId: event.id,
+					createdAt: createdAtVo,
+					offsetMinutes: reminder.offsetMinutes,
+					updatedAt: createdAtVo,
+				}),
+		);
+		reminders.forEach((reminder) => event.addReminder(reminder));
+
+		return {
+			event,
+			activeTargets,
+		};
+	}
+
+	private async applyCreateOperations(event: Event): Promise<Event> {
+		return this.eventRepository.create(event);
+	}
+
+	private async applyCreateEffects(eventId: string): Promise<void> {
+		await this.reminderPlanningService.replanEvent(eventId);
 	}
 }
