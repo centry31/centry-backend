@@ -5,7 +5,6 @@ type EventReminderProps = {
 	id: string;
 	eventId: string;
 	offsetMinutes: number;
-	nextOrderIndex?: number;
 	nextOccurrenceStart?: DateTime;
 	scheduledAt?: DateTime;
 	sentAt?: DateTime;
@@ -20,7 +19,6 @@ export class EventReminder {
 	public readonly createdAt: DateTime;
 	public readonly updatedAt: DateTime;
 
-	private readonly _nextOrderIndex?: number;
 	private readonly _nextOccurrenceStart?: DateTime;
 	private _scheduledAt?: DateTime;
 	private _sentAt?: DateTime;
@@ -30,34 +28,15 @@ export class EventReminder {
 		if (hasInvalidOffset) {
 			throw new DomainValidationError('offsetMinutes must be >= 0');
 		}
-		const hasNextOrderIndex = typeof props.nextOrderIndex !== 'undefined';
-		const hasInvalidNextOrderIndex = hasNextOrderIndex
-			? !Number.isInteger(props.nextOrderIndex) || props.nextOrderIndex < 0
-			: false;
-		if (hasInvalidNextOrderIndex) {
-			throw new DomainValidationError('nextOrderIndex must be an integer >= 0');
-		}
-		const hasNextOccurrenceStart = typeof props.nextOccurrenceStart !== 'undefined';
-		const hasInconsistentPlanningFields = hasNextOrderIndex !== hasNextOccurrenceStart;
-		if (hasInconsistentPlanningFields) {
-			throw new DomainValidationError(
-				'nextOrderIndex and nextOccurrenceStart must be set together',
-			);
-		}
 
 		this.id = props.id;
 		this.eventId = props.eventId;
 		this.offsetMinutes = props.offsetMinutes;
-		this._nextOrderIndex = props.nextOrderIndex;
 		this._nextOccurrenceStart = props.nextOccurrenceStart;
 		this._scheduledAt = props.scheduledAt;
 		this._sentAt = props.sentAt;
 		this.createdAt = props.createdAt;
 		this.updatedAt = props.updatedAt;
-	}
-
-	get nextOrderIndex(): number | undefined {
-		return this._nextOrderIndex;
 	}
 
 	get nextOccurrenceStart(): DateTime | undefined {
@@ -95,7 +74,6 @@ export class EventReminder {
 			id: this.id,
 			eventId: this.eventId,
 			offsetMinutes: this.offsetMinutes,
-			nextOrderIndex: this._nextOrderIndex,
 			nextOccurrenceStart: this._nextOccurrenceStart,
 			scheduledAt: scheduled,
 			sentAt: this._sentAt,

@@ -3,24 +3,24 @@ import type { DateTime } from 'common/domain/value-objects/date-time.vo';
 
 import type { EventReminder } from './event-reminder.entity';
 
-export type EventFrequency = 'NEVER' | 'DAILY' | 'WEEKLY' | 'DOUBLE_WEEKLY' | 'MONTHLY';
-
 type EventProps = {
 	id: string;
 	title: string;
 	description?: string;
 
 	start: DateTime;
-	repeatUntil?: DateTime;
+	rrule?: string;
+	timeZone: string;
 	duration: number;
 
 	spaceId: string;
 	createdById: string;
 	createdAt: DateTime;
 
-	reminders?: EventReminder[]; // по умолчанию []
+	detachedFromEventId?: string;
+	detachedFromOccurrenceStart?: DateTime;
 
-	frequency: EventFrequency;
+	reminders?: EventReminder[];
 };
 
 export class Event {
@@ -32,10 +32,12 @@ export class Event {
 	private _title: string;
 	private _description?: string;
 	private _start: DateTime;
-	private _repeatUntil?: DateTime;
+	private _rrule?: string;
+	private _timeZone: string;
 	private _duration: number;
 	private _reminders: EventReminder[];
-	private _frequency: EventFrequency = 'NEVER';
+	private _detachedFromEventId?: string;
+	private _detachedFromOccurrenceStart?: DateTime;
 
 	constructor(props: EventProps) {
 		this.id = props.id;
@@ -46,14 +48,18 @@ export class Event {
 		this._title = this.normalizeTitle(props.title);
 		this._description = props.description;
 		this._start = props.start;
-		this._repeatUntil = props.repeatUntil;
+		this._rrule = props.rrule;
+		this._timeZone = this.normalizeTimeZone(props.timeZone);
 		this._duration = props.duration;
 
+		this._detachedFromEventId = props.detachedFromEventId;
+		this._detachedFromOccurrenceStart = props.detachedFromOccurrenceStart;
+
 		this._reminders = props.reminders ? props.reminders.slice() : [];
-		this._frequency = props.frequency;
 
 		this.ensureRemindersCoherent();
 		this.ensureDurationValid(this._duration);
+		this.ensureDetachedLinkCoherent();
 	}
 
 	get title(): string {
@@ -68,20 +74,36 @@ export class Event {
 		return this._start;
 	}
 
-	get duration() {
-		return this._duration;
+	get rrule(): string | undefined {
+		return this._rrule;
 	}
 
-	get repeatUntil(): DateTime | undefined {
-		return this._repeatUntil;
+	get timeZone(): string {
+		return this._timeZone;
+	}
+
+	get duration(): number {
+		return this._duration;
 	}
 
 	get reminders(): readonly EventReminder[] {
 		return this._reminders;
 	}
 
-	get frequency() {
-		return this._frequency;
+	get detachedFromEventId(): string | undefined {
+		return this._detachedFromEventId;
+	}
+
+	get detachedFromOccurrenceStart(): DateTime | undefined {
+		return this._detachedFromOccurrenceStart;
+	}
+
+	isRecurring(): boolean {
+		return Boolean(this._rrule);
+	}
+
+	isDetached(): boolean {
+		return Boolean(this._detachedFromEventId);
 	}
 
 	private normalizeTitle(title: string): string {
@@ -93,9 +115,18 @@ export class Event {
 		return normalizedTitle;
 	}
 
+	private normalizeTimeZone(timeZone: string): string {
+		const normalizedTimeZone = timeZone.trim();
+		if (!normalizedTimeZone) {
+			throw new DomainValidationError('timeZone cannot be empty');
+		}
+
+		return normalizedTimeZone;
+	}
+
 	private ensureRemindersCoherent(): void {
-		for (const r of this._reminders) {
-			r.ensureCoherentWith(this._start);
+		for (const reminder of this._reminders) {
+			reminder.ensureCoherentWith(this._start);
 		}
 	}
 
@@ -104,6 +135,17 @@ export class Event {
 		if (!hasValidDuration) {
 			throw new DomainValidationError(
 				'Duration must be a positive integer number of minutes',
+			);
+		}
+	}
+
+	private ensureDetachedLinkCoherent(): void {
+		const hasDetachedFromEventId = Boolean(this._detachedFromEventId);
+		const hasDetachedFromOccurrenceStart = Boolean(this._detachedFromOccurrenceStart);
+		const hasHalfDetachedLink = hasDetachedFromEventId !== hasDetachedFromOccurrenceStart;
+		if (hasHalfDetachedLink) {
+			throw new DomainValidationError(
+				'detachedFromEventId and detachedFromOccurrenceStart must be set together',
 			);
 		}
 	}
@@ -118,41 +160,47 @@ export class Event {
 
 	changeStart(start: DateTime): void {
 		this._start = start;
-		// Пересчитываем абсолютное время напоминаний по формуле:
-		// `scheduledAt = start - offset`.
-		this._reminders = this._reminders.map((r) => r.recalculateFor(start));
+		this._reminders = this._reminders.map((reminder) => reminder.recalculateFor(start));
 	}
 
-	changeRepeatUntil(repeatUntil?: DateTime): void {
-		this._repeatUntil = repeatUntil;
+	changeRecurrence(rrule?: string): void {
+		this._rrule = rrule;
+	}
+
+	changeTimeZone(timeZone: string): void {
+		this._timeZone = this.normalizeTimeZone(timeZone);
 	}
 
 	changeTimeRange(start: DateTime, duration: number): void {
 		this.ensureDurationValid(duration);
 		this._start = start;
 		this._duration = duration;
-		this._reminders = this._reminders.map((r) => r.recalculateFor(start));
+		this._reminders = this._reminders.map((reminder) => reminder.recalculateFor(start));
 	}
 
-	addReminder(rem: EventReminder): void {
-		rem.ensureCoherentWith(this._start);
-		this._reminders.push(rem);
+	setDetachedLink(detachedFromEventId?: string, detachedFromOccurrenceStart?: DateTime): void {
+		this._detachedFromEventId = detachedFromEventId;
+		this._detachedFromOccurrenceStart = detachedFromOccurrenceStart;
+		this.ensureDetachedLinkCoherent();
+	}
+
+	addReminder(reminder: EventReminder): void {
+		reminder.ensureCoherentWith(this._start);
+		this._reminders.push(reminder);
 	}
 
 	replaceReminders(reminders: EventReminder[]): void {
-		for (const r of reminders) r.ensureCoherentWith(this._start);
+		for (const reminder of reminders) {
+			reminder.ensureCoherentWith(this._start);
+		}
 		this._reminders = reminders.slice();
 	}
 
 	removeReminder(reminderId: string): void {
-		this._reminders = this._reminders.filter((r) => r.id !== reminderId);
+		this._reminders = this._reminders.filter((reminder) => reminder.id !== reminderId);
 	}
 
 	clearReminders(): void {
 		this._reminders = [];
-	}
-
-	changeFrequency(frequency: EventFrequency): void {
-		this._frequency = frequency;
 	}
 }

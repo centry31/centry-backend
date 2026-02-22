@@ -38,15 +38,12 @@ export class ReminderProcessor extends WorkerHost {
 	}
 
 	async process(job: Job<ReminderJobData>): Promise<void> {
-		const isForeignJobType = job.name !== REMINDER_JOB_NAME;
-		if (isForeignJobType) {
+		if (job.name !== REMINDER_JOB_NAME) {
 			return;
 		}
 
-		// 1) Загружаем актуальное состояние планирования напоминания из БД.
-		const { reminderId, plannedOrderIndex, plannedOccurrenceStartAtIso } = job.data;
+		const { reminderId, plannedOccurrenceStartAtIso } = job.data;
 		const reminderState = await this.eventRepository.findReminderPlanningState(reminderId);
-
 		if (!this.hasActivePlanningState(reminderState)) {
 			this.logger.warn(
 				`Пропуск задачи напоминания ${job.id}: reminder=${reminderId} не имеет активного состояния планирования`,
@@ -54,40 +51,32 @@ export class ReminderProcessor extends WorkerHost {
 			return;
 		}
 
-		// 2) Проверяем, что job не протух: payload должен совпадать с состоянием планирования.
 		const actualOccurrenceStartIso = reminderState.nextOccurrenceStart.toISOString();
-		const hasDifferentOrderIndex = reminderState.nextOrderIndex !== plannedOrderIndex;
-		const hasDifferentOccurrenceStart =
-			actualOccurrenceStartIso !== plannedOccurrenceStartAtIso;
-		const isStaleJob = hasDifferentOrderIndex || hasDifferentOccurrenceStart;
-		if (isStaleJob) {
+		if (actualOccurrenceStartIso !== plannedOccurrenceStartAtIso) {
 			this.logger.warn(
-				`Пропуск устаревшей задачи напоминания ${job.id}: reminder=${reminderId} plannedOrderIndex=${plannedOrderIndex} actualOrderIndex=${reminderState.nextOrderIndex}`,
+				`Пропуск устаревшей задачи напоминания ${job.id}: reminder=${reminderId} plannedOccurrence=${plannedOccurrenceStartAtIso} actualOccurrence=${actualOccurrenceStartIso}`,
 			);
 			return;
 		}
 
-		// 3) Берем актуальные TG-цели на момент исполнения.
 		const targets = await this.spaceTgChatQuery.getActiveTargetsBySpaceId(
 			reminderState.spaceId,
 		);
 		if (targets.length === 0) {
 			this.logger.warn(
-				`Нет активных TG-целей для reminder=${reminderId} event=${reminderState.eventId}; отправка пропущена, переходим к следующему инстансу`,
+				`Нет активных TG-целей для reminder=${reminderId} event=${reminderState.eventId}; отправка пропущена`,
 			);
 			await this.reminderPlanningService.replanReminder(reminderId, {
-				startOrderHint: plannedOrderIndex + 1,
+				startOccurrenceHint: new Date(reminderState.nextOccurrenceStart.getTime() + 1),
 			});
 			return;
 		}
 
-		// 4) Отправляем уведомление всем найденным целям.
 		const text = this.buildReminderText(
 			reminderState.eventTitle,
 			plannedOccurrenceStartAtIso,
 			reminderState.offsetMinutes,
 		);
-
 		for (const target of targets) {
 			await this.notifier.send({
 				chatId: target.chatId,
@@ -96,13 +85,12 @@ export class ReminderProcessor extends WorkerHost {
 			});
 		}
 
-		// 5) Фиксируем успешную отправку и планируем следующий инстанс.
 		await this.eventRepository.markReminderSent(reminderId);
 		await this.reminderPlanningService.replanReminder(reminderId, {
-			startOrderHint: plannedOrderIndex + 1,
+			startOccurrenceHint: new Date(reminderState.nextOccurrenceStart.getTime() + 1),
 		});
 		this.logger.log(
-			`reminder_processed reminderId=${reminderId} orderIndex=${plannedOrderIndex} occurrence=${plannedOccurrenceStartAtIso}`,
+			`reminder_processed reminderId=${reminderId} occurrence=${plannedOccurrenceStartAtIso}`,
 		);
 	}
 
@@ -121,16 +109,9 @@ export class ReminderProcessor extends WorkerHost {
 
 	private hasActivePlanningState(
 		reminderState: ReminderPlanningState | null,
-	): reminderState is ReminderPlanningState & {
-		nextOrderIndex: number;
-		nextOccurrenceStart: Date;
-	} {
-		// Проверяем, что напоминание существует и в нем действительно есть активный план.
+	): reminderState is ReminderPlanningState & { nextOccurrenceStart: Date } {
 		const isReminderStateMissing = !reminderState;
-		const hasNoPlannedOrder = reminderState?.nextOrderIndex === null;
 		const hasNoPlannedOccurrence = !reminderState?.nextOccurrenceStart;
-		const hasNoActivePlanningState =
-			isReminderStateMissing || hasNoPlannedOrder || hasNoPlannedOccurrence;
-		return !hasNoActivePlanningState;
+		return !(isReminderStateMissing || hasNoPlannedOccurrence);
 	}
 }

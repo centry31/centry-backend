@@ -1,10 +1,10 @@
+import { RecurrenceDto } from './recurrence.dto';
+
 import { Type } from 'class-transformer';
 import {
 	ArrayMaxSize,
 	IsArray,
 	IsBoolean,
-	IsDate,
-	IsIn,
 	IsInt,
 	IsNotEmpty,
 	IsOptional,
@@ -18,7 +18,7 @@ import {
 class CreateEventReminderDto {
 	@IsInt()
 	@Min(0)
-	@Max(60 * 24 * 14) // до 14 дней
+	@Max(60 * 24 * 14)
 	offsetMinutes: number;
 }
 
@@ -36,15 +36,18 @@ export class CreateEventDto {
 	@Type(() => Date)
 	start: Date;
 
-	@IsOptional()
-	@Type(() => Date)
-	@IsDate()
-	repeatUntil?: Date;
-
 	@Type(() => Number)
 	@IsInt()
 	@Min(1)
 	duration: number;
+
+	@IsString()
+	@IsNotEmpty()
+	timeZone: string;
+
+	@ValidateNested()
+	@Type(() => RecurrenceDto)
+	recurrence: RecurrenceDto;
 
 	@IsOptional()
 	@IsArray()
@@ -52,11 +55,6 @@ export class CreateEventDto {
 	@Type(() => CreateEventReminderDto)
 	@ArrayMaxSize(5)
 	reminders?: CreateEventReminderDto[];
-
-	@IsString()
-	@IsNotEmpty()
-	@IsIn(['NEVER', 'DAILY', 'WEEKLY', 'DOUBLE_WEEKLY', 'MONTHLY'])
-	frequency: 'NEVER' | 'DAILY' | 'WEEKLY' | 'DOUBLE_WEEKLY' | 'MONTHLY';
 
 	@IsOptional()
 	@IsBoolean()

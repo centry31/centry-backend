@@ -1,6 +1,5 @@
 import * as crypto from 'crypto';
 
-import type { EventFrequency } from 'calendar/domain/event.entity';
 import { Event } from 'calendar/domain/event.entity';
 import { EventReminder } from 'calendar/domain/event-reminder.entity';
 import { DateTime } from 'common/domain/value-objects/date-time.vo';
@@ -16,6 +15,10 @@ import {
 import { TG_NOTIFIER, TgNotifier } from 'calendar/application/ports/tg-notifier/tg-notifier.port';
 
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import {
+	type RecurrenceConfig,
+	RecurrenceService,
+} from 'calendar/application/services/recurrence/recurrence.service';
 import { runUseCase } from 'common/application/errors/run-use-case';
 import { SPACE_TG_CHAT_QUERY, SpaceTgChatQuery } from 'spaces';
 
@@ -24,8 +27,9 @@ type Cmd = {
 	description: string | null;
 
 	start: Date;
-	repeatUntil?: Date;
 	duration: number;
+	timeZone: string;
+	recurrence: RecurrenceConfig;
 
 	spaceId: string;
 	createdById: string;
@@ -34,8 +38,6 @@ type Cmd = {
 
 	isNotifyMessage?: boolean;
 	notifyMessage?: string;
-
-	frequency: EventFrequency;
 };
 
 type Reminder = {
@@ -61,6 +63,8 @@ export class CreateEventUseCase {
 
 		@Inject(TG_NOTIFIER)
 		private readonly tgNotifier: TgNotifier,
+
+		private readonly recurrenceService: RecurrenceService,
 	) {}
 
 	private buildNotifyMessage = (event: Event, notifyMessage?: string) => {
@@ -74,6 +78,7 @@ export class CreateEventUseCase {
 				year: 'numeric',
 				hour: '2-digit',
 				minute: '2-digit',
+				timeZone: event.timeZone,
 			});
 
 		return [
@@ -122,32 +127,26 @@ export class CreateEventUseCase {
 		}
 
 		const startVo = DateTime.fromDate(cmd.start);
-		const repeatUntilVo = cmd.repeatUntil ? DateTime.fromDate(cmd.repeatUntil) : undefined;
 		const createdAtVo = DateTime.now();
-
-		const isRecurringEvent = cmd.frequency !== 'NEVER';
-		const isRepeatUntilBeforeStart = repeatUntilVo
-			? repeatUntilVo.value.getTime() < startVo.value.getTime()
-			: false;
-		const hasInvalidRepeatUntil = isRecurringEvent && isRepeatUntilBeforeStart;
-		if (hasInvalidRepeatUntil) {
-			throw new HttpException(
-				'repeatUntil должен быть не раньше start для повторяющихся событий',
-				HttpStatus.BAD_REQUEST,
-			);
-		}
+		this.ensureRecurrenceUntilValid(cmd.recurrence, cmd.start);
+		this.recurrenceService.validateTimeZone(cmd.timeZone);
+		const rrule = this.recurrenceService.buildRRule({
+			recurrence: cmd.recurrence,
+			start: cmd.start,
+			timeZone: cmd.timeZone,
+		});
 
 		const event = new Event({
 			id: crypto.randomUUID(),
 			title: cmd.title,
-			description: cmd.description,
+			description: cmd.description ?? undefined,
 			start: startVo,
-			repeatUntil: cmd.frequency === 'NEVER' ? undefined : repeatUntilVo,
+			rrule: rrule ?? undefined,
+			timeZone: cmd.timeZone,
 			duration: cmd.duration,
 			spaceId: cmd.spaceId,
 			createdById: cmd.createdById,
 			createdAt: createdAtVo,
-			frequency: cmd.frequency,
 		});
 
 		const reminders = cmd.reminders.map(
@@ -160,7 +159,9 @@ export class CreateEventUseCase {
 					updatedAt: createdAtVo,
 				}),
 		);
-		reminders.forEach((reminder) => event.addReminder(reminder));
+		for (const reminder of reminders) {
+			event.addReminder(reminder);
+		}
 
 		return {
 			event,
@@ -174,5 +175,20 @@ export class CreateEventUseCase {
 
 	private async applyCreateEffects(eventId: string): Promise<void> {
 		await this.reminderPlanningService.replanEvent(eventId);
+	}
+
+	private ensureRecurrenceUntilValid(recurrence: RecurrenceConfig, start: Date): void {
+		const isRecurring = recurrence.type !== 'NONE';
+		const hasInvalidUntil =
+			isRecurring &&
+			recurrence.until instanceof Date &&
+			!Number.isNaN(recurrence.until.getTime()) &&
+			recurrence.until.getTime() < start.getTime();
+		if (hasInvalidUntil) {
+			throw new HttpException(
+				'recurrence.until должен быть не раньше start',
+				HttpStatus.BAD_REQUEST,
+			);
+		}
 	}
 }

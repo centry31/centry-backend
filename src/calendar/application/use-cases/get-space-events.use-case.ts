@@ -1,17 +1,34 @@
+import type { EventReminder } from 'calendar/domain/event-reminder.entity';
+
 import {
 	EVENT_REPOSITORY,
 	EventRepository,
 } from 'calendar/application/ports/event/event.repository';
 import {
-	EVENT_OVERRIDE_REPOSITORY,
-	EventOverrideRepository,
-} from 'calendar/application/ports/event-override/event-override.repository';
+	EVENT_EXCEPTION_REPOSITORY,
+	EventExceptionRepository,
+} from 'calendar/application/ports/event-exception/event-exception.repository';
 
-import type { MaterializedEvent } from './helpers/event-series';
-import { materializeEventsInRange } from './helpers/event-series';
-
-import { Inject } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import {
+	type RecurrenceConfig,
+	RecurrenceService,
+} from 'calendar/application/services/recurrence/recurrence.service';
 import { runUseCase } from 'common/application/errors/run-use-case';
+
+export type MaterializedEvent = {
+	eventId: string;
+	occurrenceStart: Date;
+	title: string;
+	description: string | null;
+	start: Date;
+	duration: number;
+	timeZone: string;
+	spaceId: string;
+	createdById: string;
+	recurrence: RecurrenceConfig;
+	reminders: readonly EventReminder[];
+};
 
 type Cmd = {
 	spaceId: string;
@@ -19,28 +36,113 @@ type Cmd = {
 	to: Date;
 };
 
+@Injectable()
 export class GetSpaceEventsUseCase {
 	constructor(
 		@Inject(EVENT_REPOSITORY)
 		private readonly eventRepository: EventRepository,
 
-		@Inject(EVENT_OVERRIDE_REPOSITORY)
-		private readonly eventOverrideRepository: EventOverrideRepository,
+		@Inject(EVENT_EXCEPTION_REPOSITORY)
+		private readonly eventExceptionRepository: EventExceptionRepository,
+
+		private readonly recurrenceService: RecurrenceService,
 	) {}
 
 	async execute(cmd: Cmd): Promise<MaterializedEvent[]> {
 		return runUseCase(async () => {
 			const events = await this.eventRepository.findManyBySpaceId(cmd.spaceId);
-			const overridesByEventId = await this.eventOverrideRepository.findByEventIds(
-				events.map((event) => event.id),
-			);
+			const baseEvents = events.filter((event) => !event.detachedFromEventId);
+			const detachedByOrigin = new Map<string, Map<number, (typeof events)[number]>>();
 
-			return materializeEventsInRange({
-				events,
-				overridesByEventId,
-				from: cmd.from,
-				to: cmd.to,
+			for (const event of events) {
+				if (!event.detachedFromEventId || !event.detachedFromOccurrenceStart) {
+					continue;
+				}
+
+				if (!detachedByOrigin.has(event.detachedFromEventId)) {
+					detachedByOrigin.set(event.detachedFromEventId, new Map());
+				}
+				detachedByOrigin
+					.get(event.detachedFromEventId)
+					.set(event.detachedFromOccurrenceStart.value.getTime(), event);
+			}
+
+			const exceptionsByEventId = await this.eventExceptionRepository.findByEventIds(
+				baseEvents.map((event) => event.id),
+			);
+			const materializedEvents: MaterializedEvent[] = [];
+
+			for (const event of baseEvents) {
+				const recurrence = this.recurrenceService.parseRRule(event.rrule);
+				const occurrences = this.recurrenceService.iterateOccurrencesInRange({
+					start: event.start.value,
+					rrule: event.rrule,
+					timeZone: event.timeZone,
+					from: cmd.from,
+					to: cmd.to,
+				});
+
+				const detachedMap = detachedByOrigin.get(event.id) ?? new Map();
+				const exceptionsSet = new Set(
+					(exceptionsByEventId[event.id] ?? []).map((exception) =>
+						exception.occurrenceStart.value.getTime(),
+					),
+				);
+
+				for (const occurrenceStart of occurrences) {
+					const occurrenceStartTime = occurrenceStart.getTime();
+					const detached = detachedMap.get(occurrenceStartTime);
+					if (detached) {
+						materializedEvents.push({
+							eventId: event.id,
+							occurrenceStart,
+							title: detached.title,
+							description: detached.description ?? null,
+							start: detached.start.value,
+							duration: detached.duration,
+							timeZone: detached.timeZone,
+							spaceId: detached.spaceId,
+							createdById: detached.createdById,
+							recurrence,
+							reminders: detached.reminders,
+						});
+						continue;
+					}
+
+					const isException = exceptionsSet.has(occurrenceStartTime);
+					if (isException) {
+						continue;
+					}
+
+					materializedEvents.push({
+						eventId: event.id,
+						occurrenceStart,
+						title: event.title,
+						description: event.description ?? null,
+						start: occurrenceStart,
+						duration: event.duration,
+						timeZone: event.timeZone,
+						spaceId: event.spaceId,
+						createdById: event.createdById,
+						recurrence,
+						reminders: event.reminders,
+					});
+				}
+			}
+
+			materializedEvents.sort((a, b) => {
+				const byStart = a.start.getTime() - b.start.getTime();
+				if (byStart !== 0) {
+					return byStart;
+				}
+				const byEvent = a.eventId.localeCompare(b.eventId);
+				if (byEvent !== 0) {
+					return byEvent;
+				}
+				return a.occurrenceStart.getTime() - b.occurrenceStart.getTime();
 			});
+
+			return materializedEvents;
 		});
 	}
 }

@@ -12,7 +12,6 @@ import { Queue } from 'bullmq';
 
 export type ReminderJobData = {
 	reminderId: string;
-	plannedOrderIndex: number;
 	plannedOccurrenceStartAtIso: string;
 	scheduledAtIso: string;
 };
@@ -37,15 +36,13 @@ export class BullReminderScheduler implements ReminderScheduler {
 		}
 
 		const delay = remindAtMillis - now;
-		// Для одного напоминания должна оставаться только одна актуальная будущая задача.
 		await this.removeFutureJobsByReminderId(cmd.reminderId);
-		const jobId = this.buildJobId(cmd.reminderId, cmd.plannedOrderIndex);
+		const jobId = this.buildJobId(cmd.reminderId, cmd.plannedOccurrenceStartAt);
 
 		await this.queue.add(
 			REMINDER_JOB_NAME,
 			{
 				reminderId: cmd.reminderId,
-				plannedOrderIndex: cmd.plannedOrderIndex,
 				plannedOccurrenceStartAtIso: cmd.plannedOccurrenceStartAt.toISOString(),
 				scheduledAtIso: cmd.scheduledAt.toISOString(),
 			},
@@ -66,8 +63,8 @@ export class BullReminderScheduler implements ReminderScheduler {
 		await this.removeFutureJobsByReminderId(reminderId);
 	}
 
-	private buildJobId(reminderId: string, plannedOrderIndex: number): string {
-		return `reminder:${reminderId}:${plannedOrderIndex}`;
+	private buildJobId(reminderId: string, plannedOccurrenceStartAt: Date): string {
+		return `reminder:${reminderId}:${plannedOccurrenceStartAt.getTime()}`;
 	}
 
 	private async removeFutureJobsByReminderId(reminderId: string): Promise<void> {
@@ -75,12 +72,10 @@ export class BullReminderScheduler implements ReminderScheduler {
 		const legacyJobId = `reminder:${reminderId}`;
 		const jobs = await this.queue.getJobs(['waiting', 'delayed', 'prioritized', 'paused']);
 
-		// Удаляем как новые `jobId` с индексом серии, так и legacy-формат без него.
 		for (const job of jobs) {
 			const isCurrentJob = this.isReminderJob(job, prefix);
 			const isLegacySingleJob = job.id === legacyJobId;
-			const shouldRemoveJob = isCurrentJob || isLegacySingleJob;
-			if (shouldRemoveJob) {
+			if (isCurrentJob || isLegacySingleJob) {
 				await job.remove();
 			}
 		}

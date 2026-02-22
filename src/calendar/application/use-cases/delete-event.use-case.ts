@@ -1,19 +1,11 @@
-import * as crypto from 'crypto';
-
-import { EventOverride } from 'calendar/domain/event-override.entity';
-
 import {
 	EVENT_REPOSITORY,
 	EventRepository,
 } from 'calendar/application/ports/event/event.repository';
 import {
-	EVENT_OVERRIDE_REPOSITORY,
-	EventOverrideRepository,
-} from 'calendar/application/ports/event-override/event-override.repository';
-import {
-	RECURRING_OVERRIDES,
-	RecurringOverrides,
-} from 'calendar/application/ports/recurring-overrides/recurring-overrides.port';
+	EVENT_EXCEPTION_REPOSITORY,
+	EventExceptionRepository,
+} from 'calendar/application/ports/event-exception/event-exception.repository';
 import {
 	REMINDER_PLANNING,
 	ReminderPlanning,
@@ -24,12 +16,14 @@ import {
 } from 'calendar/application/ports/reminder-scheduler/reminder-scheduler.port';
 
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { RecurrenceService } from 'calendar/application/services/recurrence/recurrence.service';
 import { runUseCase } from 'common/application/errors/run-use-case';
 
 type Cmd = {
 	spaceId: string;
 	eventId: string;
-	orderIndex?: number;
+	scope?: 'SERIES' | 'THIS';
+	occurrenceStart?: Date;
 };
 
 @Injectable()
@@ -38,8 +32,8 @@ export class DeleteEventUseCase {
 		@Inject(EVENT_REPOSITORY)
 		private readonly eventRepository: EventRepository,
 
-		@Inject(EVENT_OVERRIDE_REPOSITORY)
-		private readonly eventOverrideRepository: EventOverrideRepository,
+		@Inject(EVENT_EXCEPTION_REPOSITORY)
+		private readonly eventExceptionRepository: EventExceptionRepository,
 
 		@Inject(REMINDER_SCHEDULER)
 		private readonly reminderScheduler: ReminderScheduler,
@@ -47,8 +41,7 @@ export class DeleteEventUseCase {
 		@Inject(REMINDER_PLANNING)
 		private readonly reminderPlanningService: ReminderPlanning,
 
-		@Inject(RECURRING_OVERRIDES)
-		private readonly recurringOverrides: RecurringOverrides,
+		private readonly recurrenceService: RecurrenceService,
 	) {}
 
 	async execute(cmd: Cmd): Promise<void> {
@@ -58,96 +51,63 @@ export class DeleteEventUseCase {
 				throw new NotFoundException('Событие не найдено');
 			}
 
-			const hasOrderIndex = typeof cmd.orderIndex !== 'undefined';
-			if (!hasOrderIndex) {
-				await this.deleteWholeEvent(
-					cmd.eventId,
-					cmd.spaceId,
-					event.reminders.map((r) => r.id),
-				);
+			const scope = cmd.scope ?? 'SERIES';
+			if (scope === 'SERIES' || !event.isRecurring()) {
+				await this.deleteWholeEvent(event.id, cmd.spaceId);
 				return;
 			}
 
-			const orderIndex = this.requireValidOrderIndex(cmd.orderIndex);
-			const isSingleEvent = event.frequency === 'NEVER';
-			if (isSingleEvent) {
-				const isValidSingleOrderIndex = orderIndex === 0;
-				if (!isValidSingleOrderIndex) {
-					throw new BadRequestException(
-						'Для одноразового события orderIndex может быть только 0',
-					);
+			const occurrenceStart = this.requireOccurrenceStart(cmd.occurrenceStart);
+			const inSeries = this.recurrenceService.isOccurrenceInSeries({
+				start: event.start.value,
+				rrule: event.rrule,
+				timeZone: event.timeZone,
+				occurrenceStart,
+			});
+			if (!inSeries) {
+				throw new BadRequestException('occurrenceStart не входит в серию');
+			}
+
+			await this.eventExceptionRepository.upsert(event.id, occurrenceStart);
+			const deletedDetached = await this.eventRepository.deleteDetachedByOrigin(
+				event.id,
+				occurrenceStart,
+			);
+			if (deletedDetached) {
+				for (const reminder of deletedDetached.reminders) {
+					await this.reminderScheduler.unschedule(reminder.id);
 				}
-
-				await this.deleteWholeEvent(
-					cmd.eventId,
-					cmd.spaceId,
-					event.reminders.map((r) => r.id),
-				);
-				return;
 			}
 
-			await this.deleteRecurringOccurrence(event.id, orderIndex);
+			await this.reminderPlanningService.replanEvent(event.id);
 		});
 	}
 
-	private requireValidOrderIndex(orderIndex?: number): number {
-		const hasValidOrderIndex =
-			typeof orderIndex === 'number' && Number.isInteger(orderIndex) && orderIndex >= 0;
-		if (!hasValidOrderIndex) {
-			throw new BadRequestException('orderIndex должен быть >= 0');
+	private requireOccurrenceStart(value?: Date): Date {
+		const isValidDate = value instanceof Date && !Number.isNaN(value.getTime());
+		if (!isValidDate) {
+			throw new BadRequestException('occurrenceStart обязателен для scope=THIS');
 		}
 
-		return orderIndex;
+		return value;
 	}
 
-	private async deleteWholeEvent(
-		eventId: string,
-		spaceId: string,
-		reminderIds: string[],
-	): Promise<void> {
-		await this.eventRepository.delete(eventId, spaceId);
+	private async deleteWholeEvent(eventId: string, spaceId: string): Promise<void> {
+		const root = await this.eventRepository.findByIdWithSpaceId(eventId, spaceId);
+		if (!root) {
+			return;
+		}
+		const detached = await this.eventRepository.findManyDetachedByOriginEventId(root.id);
+		const reminderIds = [
+			...root.reminders.map((reminder) => reminder.id),
+			...detached.flatMap((detachedEvent) =>
+				detachedEvent.reminders.map((reminder) => reminder.id),
+			),
+		];
 
+		await this.eventRepository.delete(root.id, spaceId);
 		for (const reminderId of reminderIds) {
 			await this.reminderScheduler.unschedule(reminderId);
 		}
-	}
-
-	private async deleteRecurringOccurrence(eventId: string, orderIndex: number): Promise<void> {
-		const overrides = await this.eventOverrideRepository.findByEventId(eventId);
-		const currentOverride = overrides.find((override) => override.orderIndex === orderIndex);
-
-		const isFutureAnchorBeingDeleted = this.isFutureAnchorOverride(currentOverride);
-		if (isFutureAnchorBeingDeleted && currentOverride) {
-			const rebasedOverride = this.recurringOverrides.buildFutureAnchorAfterRemoval({
-				eventId,
-				removedOrderIndex: orderIndex,
-				futureShift: currentOverride.offset,
-				overrides,
-			});
-			if (rebasedOverride) {
-				await this.eventOverrideRepository.upsert(rebasedOverride);
-			}
-		}
-
-		const deleteOverride = new EventOverride({
-			id: currentOverride?.id ?? crypto.randomUUID(),
-			eventId,
-			orderIndex,
-			offset: 0,
-			isDeleted: true,
-			isOffsetOnce: true,
-		});
-		await this.eventOverrideRepository.upsert(deleteOverride);
-		await this.reminderPlanningService.replanEvent(eventId);
-	}
-
-	private isFutureAnchorOverride(override?: EventOverride): override is EventOverride {
-		if (!override) {
-			return false;
-		}
-
-		const isOneTimeOffset = override.isOffsetOnce;
-		const isDeleted = override.isDeleted;
-		return !isOneTimeOffset && !isDeleted;
 	}
 }

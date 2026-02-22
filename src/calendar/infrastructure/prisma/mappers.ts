@@ -1,31 +1,32 @@
 import { Event } from 'calendar/domain/event.entity';
-import { EventOverride } from 'calendar/domain/event-override.entity';
+import { EventException } from 'calendar/domain/event-exception.entity';
 import { EventReminder } from 'calendar/domain/event-reminder.entity';
 import { DateTime } from 'common/domain/value-objects/date-time.vo';
 
-export type EventRow = {
+type EventRow = {
 	id: string;
 	title: string;
 	description: string | null;
 
 	start: Date;
-	repeatUntil: Date | null;
+	rrule: string | null;
+	timeZone: string;
 	duration: number;
 
 	spaceId: string;
 	createdById: string;
-
-	frequency: 'NEVER' | 'DAILY' | 'WEEKLY' | 'DOUBLE_WEEKLY' | 'MONTHLY';
+	detachedFromEventId: string | null;
+	detachedFromOccurrenceStart: Date | null;
 
 	createdAt: Date;
 	updatedAt: Date;
 };
-export type EventReminderRow = {
+
+type EventReminderRow = {
 	id: string;
 	eventId: string;
 
 	offsetMinutes: number;
-	nextOrderIndex: number | null;
 	nextOccurrenceStart: Date | null;
 	scheduledAt: Date | null;
 	sentAt: Date | null;
@@ -34,13 +35,11 @@ export type EventReminderRow = {
 	updatedAt: Date;
 };
 
-export type EventOverridePersistenceRow = {
+type EventExceptionRow = {
 	id: string;
 	eventId: string;
-	orderIndex: number;
-	offset: number;
-	isDeleted: boolean;
-	isOffsetOnce: boolean;
+	occurrenceStart: Date;
+	createdAt: Date;
 };
 
 export const toEventReminderDomain = (row: EventReminderRow): EventReminder =>
@@ -49,7 +48,6 @@ export const toEventReminderDomain = (row: EventReminderRow): EventReminder =>
 		eventId: row.eventId,
 
 		offsetMinutes: row.offsetMinutes,
-		nextOrderIndex: row.nextOrderIndex ?? undefined,
 		nextOccurrenceStart: row.nextOccurrenceStart
 			? DateTime.fromDate(row.nextOccurrenceStart)
 			: undefined,
@@ -61,7 +59,7 @@ export const toEventReminderDomain = (row: EventReminderRow): EventReminder =>
 	});
 
 export const toEventDomain = (row: EventRow, reminderRows: EventReminderRow[] = []): Event => {
-	const reminders = reminderRows.map((row) => toEventReminderDomain(row));
+	const reminders = reminderRows.map((reminderRow) => toEventReminderDomain(reminderRow));
 
 	return new Event({
 		id: row.id,
@@ -69,37 +67,41 @@ export const toEventDomain = (row: EventRow, reminderRows: EventReminderRow[] = 
 		description: row.description ?? undefined,
 
 		start: DateTime.fromDate(row.start),
-		repeatUntil: row.repeatUntil ? DateTime.fromDate(row.repeatUntil) : undefined,
+		rrule: row.rrule ?? undefined,
+		timeZone: row.timeZone,
 		duration: row.duration,
 
 		spaceId: row.spaceId,
 		createdById: row.createdById,
+		detachedFromEventId: row.detachedFromEventId ?? undefined,
+		detachedFromOccurrenceStart: row.detachedFromOccurrenceStart
+			? DateTime.fromDate(row.detachedFromOccurrenceStart)
+			: undefined,
 
 		createdAt: DateTime.fromDate(row.createdAt),
-
 		reminders,
-
-		frequency: row.frequency,
 	});
 };
 
-// Для записи в БД — без поля напоминаний:
 export const toEventPersistence = (event: Event): EventRow => ({
 	id: event.id,
 	title: event.title,
 	description: event.description ?? null,
 
 	start: event.start.value,
-	repeatUntil: event.repeatUntil ? event.repeatUntil.value : null,
+	rrule: event.rrule ?? null,
+	timeZone: event.timeZone,
 	duration: event.duration,
 
 	spaceId: event.spaceId,
 	createdById: event.createdById,
+	detachedFromEventId: event.detachedFromEventId ?? null,
+	detachedFromOccurrenceStart: event.detachedFromOccurrenceStart
+		? event.detachedFromOccurrenceStart.value
+		: null,
 
 	createdAt: event.createdAt.value,
 	updatedAt: new Date(),
-
-	frequency: event.frequency,
 });
 
 export const toReminderPersistence = (reminder: EventReminder): EventReminderRow => ({
@@ -107,7 +109,6 @@ export const toReminderPersistence = (reminder: EventReminder): EventReminderRow
 	eventId: reminder.eventId,
 
 	offsetMinutes: reminder.offsetMinutes,
-	nextOrderIndex: reminder.nextOrderIndex ?? null,
 	nextOccurrenceStart: reminder.nextOccurrenceStart ? reminder.nextOccurrenceStart.value : null,
 	scheduledAt: reminder.scheduledAt ? reminder.scheduledAt.value : null,
 	sentAt: reminder.sentAt ? reminder.sentAt.value : null,
@@ -116,14 +117,10 @@ export const toReminderPersistence = (reminder: EventReminder): EventReminderRow
 	updatedAt: new Date(),
 });
 
-export const toEventOverrideDomain = (row: EventOverridePersistenceRow): EventOverride =>
-	new EventOverride({
+export const toEventExceptionDomain = (row: EventExceptionRow): EventException =>
+	new EventException({
 		id: row.id,
 		eventId: row.eventId,
-
-		orderIndex: row.orderIndex,
-		offset: row.offset,
-
-		isDeleted: row.isDeleted,
-		isOffsetOnce: row.isOffsetOnce,
+		occurrenceStart: DateTime.fromDate(row.occurrenceStart),
+		createdAt: DateTime.fromDate(row.createdAt),
 	});

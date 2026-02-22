@@ -6,7 +6,6 @@ export type ReminderPlanningState = {
 	eventTitle: string;
 	spaceId: string;
 	offsetMinutes: number;
-	nextOrderIndex: number | null;
 	nextOccurrenceStart: Date | null;
 	scheduledAt: Date | null;
 };
@@ -16,15 +15,32 @@ export interface EventRepository {
 	findByIdWithSpaceId(id: string, spaceId: string): Promise<Event | null>;
 	findManyBySpaceId(spaceId: string): Promise<Event[]>;
 
+	findDetachedByOrigin(
+		detachedFromEventId: string,
+		detachedFromOccurrenceStart: Date,
+	): Promise<Event | null>;
+	findManyDetachedByOriginEventIds(eventIds: string[]): Promise<Record<string, Event[]>>;
+	findManyDetachedByOriginEventId(eventId: string): Promise<Event[]>;
+
 	create(event: Event): Promise<Event>;
-	update(event: Event): Promise<void>; // обновляет событие и синхронизирует напоминания
+	update(event: Event): Promise<void>;
 	delete(id: string, spaceId: string): Promise<void>;
+	deleteByIds(ids: string[]): Promise<void>;
+	deleteDetachedByOriginEventId(eventId: string): Promise<Event[]>;
+	deleteDetachedByOrigin(
+		detachedFromEventId: string,
+		detachedFromOccurrenceStart: Date,
+	): Promise<Event | null>;
+	reassignDetachedAfterOccurrence(
+		sourceEventId: string,
+		targetEventId: string,
+		fromOccurrenceStart: Date,
+	): Promise<string[]>;
 
 	findReminderPlanningState(reminderId: string): Promise<ReminderPlanningState | null>;
 	updateReminderPlanningState(
 		reminderId: string,
 		data: {
-			nextOrderIndex: number | null;
 			nextOccurrenceStart: Date | null;
 			scheduledAt: Date | null;
 		},
@@ -32,4 +48,5 @@ export interface EventRepository {
 	isReminderPending(reminderId: string): Promise<boolean>;
 	markReminderSent(reminderId: string, sentAt?: Date): Promise<void>;
 }
+
 export const EVENT_REPOSITORY = Symbol('EVENT_REPOSITORY');

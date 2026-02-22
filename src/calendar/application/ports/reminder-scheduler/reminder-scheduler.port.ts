@@ -1,6 +1,5 @@
 export type ReminderScheduleEvent = {
 	reminderId: string;
-	plannedOrderIndex: number;
 	plannedOccurrenceStartAt: Date;
 	scheduledAt: Date;
 };

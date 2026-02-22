@@ -1,10 +1,13 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Min } from 'class-validator';
+import { IsDate, IsIn, IsOptional } from 'class-validator';
 
 export class DeleteEventQueryDto {
 	@IsOptional()
-	@Type(() => Number)
-	@IsInt()
-	@Min(0)
-	orderIndex?: number;
+	@IsIn(['SERIES', 'THIS'])
+	scope?: 'SERIES' | 'THIS';
+
+	@IsOptional()
+	@Type(() => Date)
+	@IsDate()
+	occurrenceStart?: Date;
 }

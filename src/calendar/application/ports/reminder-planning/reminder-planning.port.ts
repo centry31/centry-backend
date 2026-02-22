@@ -1,5 +1,5 @@
 export type ReplanReminderParams = {
-	startOrderHint?: number;
+	startOccurrenceHint?: Date;
 	now?: Date;
 };
 
