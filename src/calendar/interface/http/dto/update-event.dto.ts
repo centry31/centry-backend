@@ -16,6 +16,9 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
+/**
+ * DTO напоминания для маршрута обновления.
+ */
 class UpdateEventReminderDto {
 	@IsInt()
 	@Min(0)
@@ -23,6 +26,11 @@ class UpdateEventReminderDto {
 	offsetMinutes: number;
 }
 
+/**
+ * DTO запроса на обновление события.
+ *
+ * Endpoint использует детерминированную семантику полного обновления полей.
+ */
 export class UpdateEventDto {
 	@IsString()
 	@IsNotEmpty()
@@ -53,11 +61,13 @@ export class UpdateEventDto {
 	@IsString()
 	@IsNotEmpty()
 	@IsIn(['SERIES', 'THIS', 'THIS_AND_FUTURE'])
+	// Определяет scope изменения для recurring-событий.
 	scope: 'SERIES' | 'THIS' | 'THIS_AND_FUTURE';
 
 	@IsOptional()
 	@Type(() => Date)
 	@IsDate()
+	// Обязателен в runtime для THIS и THIS_AND_FUTURE на recurring-событиях.
 	occurrenceStart?: Date;
 
 	@IsOptional()

@@ -15,6 +15,9 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
+/**
+ * DTO напоминания для маршрута создания.
+ */
 class CreateEventReminderDto {
 	@IsInt()
 	@Min(0)
@@ -22,6 +25,9 @@ class CreateEventReminderDto {
 	offsetMinutes: number;
 }
 
+/**
+ * DTO запроса на создание события.
+ */
 export class CreateEventDto {
 	@IsString()
 	@IsNotEmpty()
@@ -43,10 +49,12 @@ export class CreateEventDto {
 
 	@IsString()
 	@IsNotEmpty()
+	// Обязательная локальная IANA-таймзона события.
 	timeZone: string;
 
 	@ValidateNested()
 	@Type(() => RecurrenceDto)
+	// Данные повторений обязательны всегда; для одноразового события используйте type=NONE.
 	recurrence: RecurrenceDto;
 
 	@IsOptional()

@@ -4,13 +4,30 @@ import { DomainValidationError } from 'common/domain/errors/domain.error';
 
 import type { RecurrenceService } from '../recurrence/recurrence.service';
 
+/**
+ * Жесткий лимит шагов для защиты от бесконечного сканирования.
+ */
 const MAX_REMINDER_OCCURRENCE_SCAN_STEPS = 100_000;
 
+/**
+ * Результат вычисления следующей цели для напоминания.
+ */
 export type NextReminderOccurrence = {
 	occurrenceStart: Date;
 	scheduledAt: Date;
 };
 
+/**
+ * Ищет следующий будущий инстанс, для которого нужно отправить напоминание.
+ *
+ * Алгоритм:
+ * - итерируем инстансы серии от `hint` или от `now`;
+ * - пропускаем исключенные слоты;
+ * - считаем `scheduledAt = occurrenceStart - offsetMinutes`;
+ * - возвращаем первый инстанс с `scheduledAt > now`.
+ *
+ * Возвращает `null`, если будущих инстансов больше нет.
+ */
 export const findNextReminderOccurrence = (params: {
 	event: Event;
 	exceptions: EventException[];
@@ -40,6 +57,8 @@ export const findNextReminderOccurrence = (params: {
 	const exceptionsSet = new Set(
 		exceptions.map((exception) => exception.occurrenceStart.value.getTime()),
 	);
+	// Курсор всегда двигается на 1мс после проверенного инстанса,
+	// чтобы не перепроверять тот же слот на включающих границах RRULE.
 	let cursor = startOccurrenceHint ?? now;
 
 	for (let step = 0; step < MAX_REMINDER_OCCURRENCE_SCAN_STEPS; step += 1) {

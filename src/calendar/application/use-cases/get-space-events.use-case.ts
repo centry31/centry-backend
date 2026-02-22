@@ -16,6 +16,9 @@ import {
 } from 'calendar/application/services/recurrence/recurrence.service';
 import { runUseCase } from 'common/application/errors/run-use-case';
 
+/**
+ * Форма события после материализации повторений для диапазона `[from, to)`.
+ */
 export type MaterializedEvent = {
 	eventId: string;
 	occurrenceStart: Date;
@@ -30,12 +33,23 @@ export type MaterializedEvent = {
 	reminders: readonly EventReminder[];
 };
 
+/**
+ * Запрос на получение событий в диапазоне дат пространства.
+ */
 type Cmd = {
 	spaceId: string;
 	from: Date;
 	to: Date;
 };
 
+/**
+ * Материализует инстансы событий для UI/API.
+ *
+ * Приоритет объединения для каждого слота:
+ * 1) `detached`-замена;
+ * 2) исключение через exception;
+ * 3) базовый инстанс корневой серии.
+ */
 @Injectable()
 export class GetSpaceEventsUseCase {
 	constructor(
@@ -48,6 +62,9 @@ export class GetSpaceEventsUseCase {
 		private readonly recurrenceService: RecurrenceService,
 	) {}
 
+	/**
+	 * Строит отсортированный список конкретных инстансов в запрошенном диапазоне.
+	 */
 	async execute(cmd: Cmd): Promise<MaterializedEvent[]> {
 		return runUseCase(async () => {
 			const events = await this.eventRepository.findManyBySpaceId(cmd.spaceId);

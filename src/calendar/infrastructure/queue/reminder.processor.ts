@@ -17,6 +17,9 @@ import { Inject, Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import { SPACE_TG_CHAT_QUERY, SpaceTgChatQuery } from 'spaces';
 
+/**
+ * Процессор BullMQ, который отправляет reminders и перепланирует следующий инстанс.
+ */
 @Processor(REMINDER_QUEUE_NAME)
 export class ReminderProcessor extends WorkerHost {
 	private readonly logger = new Logger(ReminderProcessor.name);
@@ -37,6 +40,13 @@ export class ReminderProcessor extends WorkerHost {
 		super();
 	}
 
+	/**
+	 * Точка входа процессора.
+	 *
+	 * Защитные проверки:
+	 * - игнорирует неизвестные имена jobs;
+	 * - отбрасывает устаревшие jobs сравнением planned occurrence с planning state из БД.
+	 */
 	async process(job: Job<ReminderJobData>): Promise<void> {
 		if (job.name !== REMINDER_JOB_NAME) {
 			return;
@@ -94,6 +104,9 @@ export class ReminderProcessor extends WorkerHost {
 		);
 	}
 
+	/**
+	 * Формирует человекочитаемый текст reminder-сообщения для Telegram.
+	 */
 	private buildReminderText(
 		title: string,
 		eventStartAtIso: string,
@@ -107,6 +120,9 @@ export class ReminderProcessor extends WorkerHost {
 		return `Напоминание: ${title}\nНачало: ${startText}\nЗа ${offsetMinutes} мин.`;
 	}
 
+	/**
+	 * Проверка типа в рантайме: reminder должен существовать и иметь запланированный инстанс.
+	 */
 	private hasActivePlanningState(
 		reminderState: ReminderPlanningState | null,
 	): reminderState is ReminderPlanningState & { nextOccurrenceStart: Date } {

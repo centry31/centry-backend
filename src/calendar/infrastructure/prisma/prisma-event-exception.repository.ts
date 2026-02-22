@@ -7,10 +7,16 @@ import { toEventExceptionDomain } from './mappers';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'prisma.service';
 
+/**
+ * Prisma-реализация для исключений инстансов серии.
+ */
 @Injectable()
 export class PrismaEventExceptionRepository implements EventExceptionRepository {
 	constructor(private readonly prisma: PrismaService) {}
 
+	/**
+	 * Загружает исключения для набора событий и группирует по `eventId`.
+	 */
 	async findByEventIds(eventIds: string[]): Promise<Record<string, EventException[]>> {
 		if (eventIds.length === 0) {
 			return {};
@@ -32,6 +38,9 @@ export class PrismaEventExceptionRepository implements EventExceptionRepository 
 		return grouped;
 	}
 
+	/**
+	 * Загружает исключения одного события.
+	 */
 	async findByEventId(eventId: string): Promise<EventException[]> {
 		const rows = await this.prisma.eventException.findMany({
 			where: { eventId },
@@ -40,6 +49,9 @@ export class PrismaEventExceptionRepository implements EventExceptionRepository 
 		return rows.map((row) => toEventExceptionDomain(row));
 	}
 
+	/**
+	 * Идемпотентное создание маркера исключения.
+	 */
 	async upsert(eventId: string, occurrenceStart: Date): Promise<void> {
 		await this.prisma.eventException.upsert({
 			where: {
@@ -56,10 +68,16 @@ export class PrismaEventExceptionRepository implements EventExceptionRepository 
 		});
 	}
 
+	/**
+	 * Удаляет все исключения события.
+	 */
 	async deleteByEventId(eventId: string): Promise<void> {
 		await this.prisma.eventException.deleteMany({ where: { eventId } });
 	}
 
+	/**
+	 * Вспомогательное batch-удаление.
+	 */
 	async deleteByEventIds(eventIds: string[]): Promise<void> {
 		if (eventIds.length === 0) {
 			return;
@@ -68,6 +86,9 @@ export class PrismaEventExceptionRepository implements EventExceptionRepository 
 		await this.prisma.eventException.deleteMany({ where: { eventId: { in: eventIds } } });
 	}
 
+	/**
+	 * Переносит исключения в/после split-точки из исходной серии в tail-серию.
+	 */
 	async moveFutureToEvent(params: {
 		sourceEventId: string;
 		targetEventId: string;

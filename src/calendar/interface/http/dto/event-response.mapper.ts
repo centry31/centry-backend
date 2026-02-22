@@ -5,10 +5,16 @@ import type { Event } from 'calendar/domain/event.entity';
 import type { RecurrenceConfig } from 'calendar/application/services/recurrence/recurrence.service';
 import { RRule } from 'rrule';
 
+/**
+ * Форма напоминания в API-ответе.
+ */
 type EventReminderResponse = {
 	offsetMinutes: number;
 };
 
+/**
+ * Форма материализованного события в API-ответе.
+ */
 type EventResponse = {
 	eventId: string;
 	occurrenceStart: Date;
@@ -23,6 +29,11 @@ type EventResponse = {
 	reminders: EventReminderResponse[];
 };
 
+/**
+ * Парсит сохраненную строку RRULE в публичную форму DTO повторений.
+ *
+ * Для неподдерживаемых значений возвращает `NONE`, чтобы сохранять стабильный ответ.
+ */
 const parseRecurrence = (rrule?: string): RecurrenceConfig => {
 	if (!rrule) {
 		return { type: 'NONE' };
@@ -47,6 +58,14 @@ const parseRecurrence = (rrule?: string): RecurrenceConfig => {
 	return { type: 'NONE' };
 };
 
+/**
+ * Маппит доменный объект события или материализованный инстанс в HTTP DTO.
+ *
+ * Для materialized-элементов (`GET /events`):
+ * - `eventId` — id корневой серии;
+ * - `occurrenceStart` — якорь исходного слота;
+ * - `start` — фактический отображаемый старт (может отличаться у `detached`).
+ */
 export const toEventResponse = (event: Event | MaterializedEvent): EventResponse => {
 	const reminders: EventReminderResponse[] = event.reminders.map((reminder) => ({
 		offsetMinutes: reminder.offsetMinutes,

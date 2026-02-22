@@ -10,10 +10,16 @@ import { toEventDomain, toEventPersistence, toReminderPersistence } from './mapp
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'prisma.service';
 
+/**
+ * Prisma-реализация persistence-слоя агрегата события.
+ */
 @Injectable()
 export class PrismaEventRepository implements EventRepository {
 	constructor(private readonly prisma: PrismaService) {}
 
+	/**
+	 * Возвращает событие по id вместе с reminders.
+	 */
 	async findById(id: string): Promise<Event | null> {
 		const row = await this.prisma.event.findUnique({
 			where: { id },
@@ -22,6 +28,9 @@ export class PrismaEventRepository implements EventRepository {
 		return row ? toEventDomain(row, row.reminders) : null;
 	}
 
+	/**
+	 * Возвращает событие по id в рамках space.
+	 */
 	async findByIdWithSpaceId(id: string, spaceId: string): Promise<Event | null> {
 		const row = await this.prisma.event.findFirst({
 			where: { id, spaceId },
@@ -30,6 +39,9 @@ export class PrismaEventRepository implements EventRepository {
 		return row ? toEventDomain(row, row.reminders) : null;
 	}
 
+	/**
+	 * Возвращает все события пространства (корневые и `detached`).
+	 */
 	async findManyBySpaceId(spaceId: string): Promise<Event[]> {
 		const rows = await this.prisma.event.findMany({
 			where: { spaceId },
@@ -38,6 +50,9 @@ export class PrismaEventRepository implements EventRepository {
 		return rows.map((row) => toEventDomain(row, row.reminders));
 	}
 
+	/**
+	 * Ищет `detached`-замену для точного исходного инстанса.
+	 */
 	async findDetachedByOrigin(
 		detachedFromEventId: string,
 		detachedFromOccurrenceStart: Date,
@@ -52,6 +67,9 @@ export class PrismaEventRepository implements EventRepository {
 		return row ? toEventDomain(row, row.reminders) : null;
 	}
 
+	/**
+	 * Пакетно загружает `detached` и группирует по id исходной серии.
+	 */
 	async findManyDetachedByOriginEventIds(eventIds: string[]): Promise<Record<string, Event[]>> {
 		if (eventIds.length === 0) {
 			return {};
@@ -79,6 +97,9 @@ export class PrismaEventRepository implements EventRepository {
 		return grouped;
 	}
 
+	/**
+	 * Загружает все `detached`-события одной исходной серии.
+	 */
 	async findManyDetachedByOriginEventId(eventId: string): Promise<Event[]> {
 		const rows = await this.prisma.event.findMany({
 			where: { detachedFromEventId: eventId },
@@ -87,6 +108,9 @@ export class PrismaEventRepository implements EventRepository {
 		return rows.map((row) => toEventDomain(row, row.reminders));
 	}
 
+	/**
+	 * Транзакционно создает событие и reminders.
+	 */
 	async create(event: Event): Promise<Event> {
 		const dataEvent = toEventPersistence(event);
 
@@ -112,6 +136,12 @@ export class PrismaEventRepository implements EventRepository {
 		return toEventDomain(row, row.reminders);
 	}
 
+	/**
+	 * Полная замена event/reminder строк.
+	 *
+	 * Для reminders стратегия "удалить все и вставить заново",
+	 * чтобы соответствовать детерминированной семантике полного обновления в use-case.
+	 */
 	async update(event: Event): Promise<void> {
 		const existing = await this.prisma.event.findUnique({
 			where: { id: event.id },
@@ -154,10 +184,16 @@ export class PrismaEventRepository implements EventRepository {
 		});
 	}
 
+	/**
+	 * Удаляет корневое событие в рамках пространства.
+	 */
 	async delete(id: string, spaceId: string): Promise<void> {
 		await this.prisma.event.deleteMany({ where: { id, spaceId } });
 	}
 
+	/**
+	 * Вспомогательное batch-удаление.
+	 */
 	async deleteByIds(ids: string[]): Promise<void> {
 		if (ids.length === 0) {
 			return;
@@ -166,6 +202,11 @@ export class PrismaEventRepository implements EventRepository {
 		await this.prisma.event.deleteMany({ where: { id: { in: ids } } });
 	}
 
+	/**
+	 * Удаляет все `detached` одной исходной серии.
+	 *
+	 * Возвращает удаленные сущности, чтобы вызвать unschedule их reminders.
+	 */
 	async deleteDetachedByOriginEventId(eventId: string): Promise<Event[]> {
 		const rows = await this.prisma.event.findMany({
 			where: { detachedFromEventId: eventId },
@@ -184,6 +225,9 @@ export class PrismaEventRepository implements EventRepository {
 		return rows.map((row) => toEventDomain(row, row.reminders));
 	}
 
+	/**
+	 * Удаляет `detached` для одного исходного слота.
+	 */
 	async deleteDetachedByOrigin(
 		detachedFromEventId: string,
 		detachedFromOccurrenceStart: Date,
@@ -203,6 +247,9 @@ export class PrismaEventRepository implements EventRepository {
 		return toEventDomain(row, row.reminders);
 	}
 
+	/**
+	 * Перепривязывает `detached`-ссылки после разделения серии со старого корня на новый хвост.
+	 */
 	async reassignDetachedAfterOccurrence(
 		sourceEventId: string,
 		targetEventId: string,
@@ -227,6 +274,9 @@ export class PrismaEventRepository implements EventRepository {
 		return movedIds;
 	}
 
+	/**
+	 * Возвращает текущее состояние планирования reminder для процессора очереди.
+	 */
 	async findReminderPlanningState(reminderId: string): Promise<ReminderPlanningState | null> {
 		const row = await this.prisma.eventReminder.findUnique({
 			where: { id: reminderId },
@@ -259,6 +309,9 @@ export class PrismaEventRepository implements EventRepository {
 		};
 	}
 
+	/**
+	 * Сохраняет поля состояния планирования reminder.
+	 */
 	async updateReminderPlanningState(
 		reminderId: string,
 		data: {
@@ -275,6 +328,9 @@ export class PrismaEventRepository implements EventRepository {
 		});
 	}
 
+	/**
+	 * Возвращает `true`, если `scheduledAt` у reminder не `null`.
+	 */
 	async isReminderPending(reminderId: string): Promise<boolean> {
 		const row = await this.prisma.eventReminder.findFirst({
 			where: { id: reminderId, scheduledAt: { not: null } },
@@ -284,6 +340,9 @@ export class PrismaEventRepository implements EventRepository {
 		return Boolean(row);
 	}
 
+	/**
+	 * Помечает reminder как отправленный.
+	 */
 	async markReminderSent(reminderId: string, sentAt: Date = new Date()): Promise<void> {
 		await this.prisma.eventReminder.updateMany({
 			where: { id: reminderId },

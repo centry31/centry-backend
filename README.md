@@ -1,5 +1,5 @@
 # CENTRY BACKEND
 
-## Docs
+## Документация
 
-- Frontend migration guide (calendar contract): `docs/frontend-calendar-migration-guide.md`
+- Внутреннее устройство движка событий (архитектура и алгоритмы): `docs/events-engine-internals.md`

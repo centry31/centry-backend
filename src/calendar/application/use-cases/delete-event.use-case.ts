@@ -19,6 +19,9 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from '@nes
 import { RecurrenceService } from 'calendar/application/services/recurrence/recurrence.service';
 import { runUseCase } from 'common/application/errors/run-use-case';
 
+/**
+ * Команда удаления.
+ */
 type Cmd = {
 	spaceId: string;
 	eventId: string;
@@ -26,6 +29,11 @@ type Cmd = {
 	occurrenceStart?: Date;
 };
 
+/**
+ * Удаляет либо:
+ * - всю серию/одноразовое событие;
+ * - один инстанс (исключение + очистка `detached`).
+ */
 @Injectable()
 export class DeleteEventUseCase {
 	constructor(
@@ -44,6 +52,9 @@ export class DeleteEventUseCase {
 		private readonly recurrenceService: RecurrenceService,
 	) {}
 
+	/**
+	 * Основной процесс удаления.
+	 */
 	async execute(cmd: Cmd): Promise<void> {
 		return runUseCase(async () => {
 			const event = await this.eventRepository.findByIdWithSpaceId(cmd.eventId, cmd.spaceId);
@@ -83,6 +94,9 @@ export class DeleteEventUseCase {
 		});
 	}
 
+	/**
+	 * Проверяет, что для `scope=THIS` передан валидный `occurrenceStart`.
+	 */
 	private requireOccurrenceStart(value?: Date): Date {
 		const isValidDate = value instanceof Date && !Number.isNaN(value.getTime());
 		if (!isValidDate) {
@@ -92,6 +106,9 @@ export class DeleteEventUseCase {
 		return value;
 	}
 
+	/**
+	 * Удаляет корневое событие и снимает reminders у корня и `detached`-потомков.
+	 */
 	private async deleteWholeEvent(eventId: string, spaceId: string): Promise<void> {
 		const root = await this.eventRepository.findByIdWithSpaceId(eventId, spaceId);
 		if (!root) {

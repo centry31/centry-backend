@@ -22,6 +22,9 @@ import {
 import { runUseCase } from 'common/application/errors/run-use-case';
 import { SPACE_TG_CHAT_QUERY, SpaceTgChatQuery } from 'spaces';
 
+/**
+ * Команда создания нового события/серии.
+ */
 type Cmd = {
 	title: string;
 	description: string | null;
@@ -44,11 +47,19 @@ type Reminder = {
 	offsetMinutes: number;
 };
 
+/**
+ * Данные, подготовленные до сохранения и побочных действий.
+ */
 type CreateBuildData = {
 	event: Event;
 	activeTargets: Awaited<ReturnType<SpaceTgChatQuery['getActiveTargetsBySpaceId']>>;
 };
 
+/**
+ * Создает событие и запускает первичное планирование reminders.
+ *
+ * Также опционально отправляет уведомление о создании в Telegram.
+ */
 @Injectable()
 export class CreateEventUseCase {
 	constructor(
@@ -67,6 +78,9 @@ export class CreateEventUseCase {
 		private readonly recurrenceService: RecurrenceService,
 	) {}
 
+	/**
+	 * Формирует текст информационного Telegram-сообщения о создании события.
+	 */
 	private buildNotifyMessage = (event: Event, notifyMessage?: string) => {
 		const start = event.start.value;
 		const end = new Date(start.getTime() + event.duration * 60_000);
@@ -93,6 +107,13 @@ export class CreateEventUseCase {
 			.join('\n');
 	};
 
+	/**
+	 * Основной процесс создания:
+	 * - валидация предусловий и нормализация повторений;
+	 * - сохранение события и reminders;
+	 * - планирование reminders;
+	 * - опциональная отправка notify-сообщений.
+	 */
 	async execute(cmd: Cmd): Promise<Event> {
 		return runUseCase(async () => {
 			const buildData = await this.buildCreateData(cmd);
@@ -113,6 +134,9 @@ export class CreateEventUseCase {
 		});
 	}
 
+	/**
+	 * Собирает валидную доменную модель и контекст для побочных действий.
+	 */
 	private async buildCreateData(cmd: Cmd): Promise<CreateBuildData> {
 		const activeTargets = await this.spaceTgChatQuery.getActiveTargetsBySpaceId(cmd.spaceId);
 
@@ -169,14 +193,23 @@ export class CreateEventUseCase {
 		};
 	}
 
+	/**
+	 * Сохраняет агрегат события.
+	 */
 	private async applyCreateOperations(event: Event): Promise<Event> {
 		return this.eventRepository.create(event);
 	}
 
+	/**
+	 * Запускает планирование reminder jobs для нового события.
+	 */
 	private async applyCreateEffects(eventId: string): Promise<void> {
 		await this.reminderPlanningService.replanEvent(eventId);
 	}
 
+	/**
+	 * Проверяет, что `recurrence.until` не раньше `start` для повторяющихся событий.
+	 */
 	private ensureRecurrenceUntilValid(recurrence: RecurrenceConfig, start: Date): void {
 		const isRecurring = recurrence.type !== 'NONE';
 		const hasInvalidUntil =

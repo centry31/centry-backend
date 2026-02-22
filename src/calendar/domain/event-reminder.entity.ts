@@ -1,6 +1,9 @@
 import { DomainValidationError } from 'common/domain/errors/domain.error';
 import { DateTime } from 'common/domain/value-objects/date-time.vo';
 
+/**
+ * Данные конструктора доменной сущности {@link EventReminder}.
+ */
 type EventReminderProps = {
 	id: string;
 	eventId: string;
@@ -12,6 +15,13 @@ type EventReminderProps = {
 	updatedAt: DateTime;
 };
 
+/**
+ * Сущность напоминания, привязанного к событию.
+ *
+ * Модель планирования:
+ * - `nextOccurrenceStart`: следующий целевой инстанс;
+ * - `scheduledAt`: когда нужно отправить напоминание для этого инстанса.
+ */
 export class EventReminder {
 	public readonly id: string;
 	public readonly eventId: string;
@@ -23,6 +33,9 @@ export class EventReminder {
 	private _scheduledAt?: DateTime;
 	private _sentAt?: DateTime;
 
+	/**
+	 * Создает reminder и проверяет, что offset не отрицательный.
+	 */
 	constructor(props: EventReminderProps) {
 		const hasInvalidOffset = props.offsetMinutes < 0;
 		if (hasInvalidOffset) {
@@ -39,18 +52,33 @@ export class EventReminder {
 		this.updatedAt = props.updatedAt;
 	}
 
+	/**
+	 * Текущий запланированный инстанс.
+	 */
 	get nextOccurrenceStart(): DateTime | undefined {
 		return this._nextOccurrenceStart;
 	}
 
+	/**
+	 * Запланированное время выполнения в очереди.
+	 */
 	get scheduledAt(): DateTime | undefined {
 		return this._scheduledAt;
 	}
 
+	/**
+	 * Время последней успешной отправки.
+	 */
 	get sentAt(): DateTime | undefined {
 		return this._sentAt;
 	}
 
+	/**
+	 * Проверяет, что `scheduledAt = базовыйИнстанс - offsetMinutes`.
+	 *
+	 * Базовый инстанс — это `nextOccurrenceStart` (если он есть),
+	 * иначе `eventStart`.
+	 */
 	ensureCoherentWith(eventStart: DateTime): void {
 		const scheduledAt = this._scheduledAt;
 		const hasScheduledAt = Boolean(scheduledAt);
@@ -66,6 +94,9 @@ export class EventReminder {
 		}
 	}
 
+	/**
+	 * Возвращает новый объект reminder с пересчитанным `scheduledAt`.
+	 */
 	recalculateFor(eventStart: DateTime): EventReminder {
 		const scheduledBase = this._nextOccurrenceStart ?? eventStart;
 		const scheduled = scheduledBase.addMinutes(-this.offsetMinutes);
@@ -82,6 +113,9 @@ export class EventReminder {
 		});
 	}
 
+	/**
+	 * Помечает reminder как отправленный.
+	 */
 	markSent(now: DateTime = DateTime.now()): void {
 		this._sentAt = now;
 	}

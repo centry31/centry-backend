@@ -3,6 +3,9 @@ import { EventException } from 'calendar/domain/event-exception.entity';
 import { EventReminder } from 'calendar/domain/event-reminder.entity';
 import { DateTime } from 'common/domain/value-objects/date-time.vo';
 
+/**
+ * Проекция строки `event` из Prisma для адаптера репозитория.
+ */
 type EventRow = {
 	id: string;
 	title: string;
@@ -22,6 +25,9 @@ type EventRow = {
 	updatedAt: Date;
 };
 
+/**
+ * Проекция строки `eventReminder` из Prisma для адаптера репозитория.
+ */
 type EventReminderRow = {
 	id: string;
 	eventId: string;
@@ -35,6 +41,9 @@ type EventReminderRow = {
 	updatedAt: Date;
 };
 
+/**
+ * Проекция строки `eventException` из Prisma для адаптера репозитория.
+ */
 type EventExceptionRow = {
 	id: string;
 	eventId: string;
@@ -42,6 +51,9 @@ type EventExceptionRow = {
 	createdAt: Date;
 };
 
+/**
+ * Маппит строку reminder из persistence-слоя в доменную сущность.
+ */
 export const toEventReminderDomain = (row: EventReminderRow): EventReminder =>
 	new EventReminder({
 		id: row.id,
@@ -58,6 +70,9 @@ export const toEventReminderDomain = (row: EventReminderRow): EventReminder =>
 		updatedAt: DateTime.fromDate(row.updatedAt),
 	});
 
+/**
+ * Маппит строку события (+reminders) в доменный агрегат.
+ */
 export const toEventDomain = (row: EventRow, reminderRows: EventReminderRow[] = []): Event => {
 	const reminders = reminderRows.map((reminderRow) => toEventReminderDomain(reminderRow));
 
@@ -83,6 +98,9 @@ export const toEventDomain = (row: EventRow, reminderRows: EventReminderRow[] = 
 	});
 };
 
+/**
+ * Маппит агрегат события в формат persistence-слоя.
+ */
 export const toEventPersistence = (event: Event): EventRow => ({
 	id: event.id,
 	title: event.title,
@@ -104,6 +122,9 @@ export const toEventPersistence = (event: Event): EventRow => ({
 	updatedAt: new Date(),
 });
 
+/**
+ * Маппит reminder-сущность в формат persistence-слоя.
+ */
 export const toReminderPersistence = (reminder: EventReminder): EventReminderRow => ({
 	id: reminder.id,
 	eventId: reminder.eventId,
@@ -117,6 +138,9 @@ export const toReminderPersistence = (reminder: EventReminder): EventReminderRow
 	updatedAt: new Date(),
 });
 
+/**
+ * Маппит строку исключения из persistence-слоя в доменный маркер.
+ */
 export const toEventExceptionDomain = (row: EventExceptionRow): EventException =>
 	new EventException({
 		id: row.id,

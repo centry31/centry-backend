@@ -3,12 +3,25 @@ import { DomainValidationError } from 'common/domain/errors/domain.error';
 import { Injectable } from '@nestjs/common';
 import { type Options as RRuleOptions, RRule } from 'rrule';
 
+/**
+ * Публичные типы повторений, поддерживаемые API и приложением.
+ *
+ * Поддерживается только ограниченный набор, чтобы логика обновления/разделения/напоминаний
+ * оставалась детерминированной.
+ */
 export type RecurrenceType = 'NONE' | 'DAILY' | 'WEEKLY' | 'DOUBLE_WEEKLY' | 'MONTHLY';
+
+/**
+ * Нормализованная конфигурация повторений для слоя API/use-case.
+ */
 export type RecurrenceConfig = {
 	type: RecurrenceType;
 	until?: Date;
 };
 
+/**
+ * Общий контекст для операций с RRULE.
+ */
 type RuleContext = {
 	start: Date;
 	rrule?: string;
@@ -17,8 +30,20 @@ type RuleContext = {
 
 const RRULE_PREFIX = 'RRULE:';
 
+/**
+ * Доменный сервис повторений.
+ *
+ * Ответственность:
+ * - валидация IANA таймзон;
+ * - конвертация API-модели в канонический RRULE и обратно;
+ * - итерация и валидация инстансов;
+ * - модификация RRULE для логики разделения (`UNTIL`).
+ */
 @Injectable()
 export class RecurrenceService {
+	/**
+	 * Проверяет, что таймзона распознается средой выполнения JS.
+	 */
 	validateTimeZone(timeZone: string): void {
 		try {
 			new Intl.DateTimeFormat('en-US', { timeZone });
@@ -27,6 +52,11 @@ export class RecurrenceService {
 		}
 	}
 
+	/**
+	 * Собирает канонический RRULE из данных API.
+	 *
+	 * Возвращает `null` для одноразовых событий (`type=NONE`).
+	 */
 	buildRRule(params: {
 		recurrence: RecurrenceConfig;
 		start: Date;
@@ -52,6 +82,11 @@ export class RecurrenceService {
 		return this.normalizeRRuleString(rule.toString());
 	}
 
+	/**
+	 * Парсит RRULE в поддерживаемую форму DTO повторений.
+	 *
+	 * Бросает ошибку для правил вне разрешенного набора.
+	 */
 	parseRRule(rrule?: string | null): RecurrenceConfig {
 		if (!rrule) {
 			return { type: 'NONE' };
@@ -77,6 +112,9 @@ export class RecurrenceService {
 		throw new DomainValidationError('Unsupported recurrence rule');
 	}
 
+	/**
+	 * Проверяет, что `occurrenceStart` — валидный слот этой серии.
+	 */
 	isOccurrenceInSeries(params: RuleContext & { occurrenceStart: Date }): boolean {
 		const { occurrenceStart } = params;
 		if (!params.rrule) {
@@ -89,6 +127,9 @@ export class RecurrenceService {
 		return Boolean(next && next.getTime() === occurrenceStart.getTime());
 	}
 
+	/**
+	 * Возвращает ближайший предыдущий инстанс перед указанным слотом.
+	 */
 	getPreviousOccurrence(params: RuleContext & { occurrenceStart: Date }): Date | null {
 		if (!params.rrule) {
 			return null;
@@ -98,6 +139,9 @@ export class RecurrenceService {
 		return rule.before(params.occurrenceStart, false) ?? null;
 	}
 
+	/**
+	 * Возвращает следующий инстанс в точке `fromInclusive` или после нее.
+	 */
 	getNextOccurrence(params: RuleContext & { fromInclusive: Date }): Date | null {
 		if (!params.rrule) {
 			return params.start.getTime() >= params.fromInclusive.getTime() ? params.start : null;
@@ -108,6 +152,9 @@ export class RecurrenceService {
 		return rule.after(lowerBound, true) ?? null;
 	}
 
+	/**
+	 * Итерирует инстансы в полуинтервале `[from, to)`.
+	 */
 	iterateOccurrencesInRange(params: RuleContext & { from: Date; to: Date }): Date[] {
 		const { from, to } = params;
 		if (from.getTime() >= to.getTime()) {
@@ -125,6 +172,9 @@ export class RecurrenceService {
 		return occurrences.filter((date) => date.getTime() < to.getTime());
 	}
 
+	/**
+	 * Перезаписывает RRULE серии, устанавливая `UNTIL` (используется при split).
+	 */
 	setUntil(params: RuleContext & { until: Date }): string {
 		if (!params.rrule) {
 			throw new DomainValidationError('Cannot set UNTIL for non-recurring event');
@@ -140,6 +190,9 @@ export class RecurrenceService {
 		return this.normalizeRRuleString(rule.toString());
 	}
 
+	/**
+	 * Создает исполняемый `RRule` с нормализованным вводом и явными `tzid/dtstart`.
+	 */
 	private createRule(params: RuleContext): RRule {
 		this.validateTimeZone(params.timeZone);
 		const parsed = RRule.parseString(this.normalizeRRuleString(params.rrule));
@@ -150,6 +203,9 @@ export class RecurrenceService {
 		});
 	}
 
+	/**
+	 * Маппит API-тип повторения в `RRule` freq.
+	 */
 	private toRRuleFreq(type: Exclude<RecurrenceType, 'NONE'>): number {
 		switch (type) {
 			case 'DAILY':
@@ -164,6 +220,9 @@ export class RecurrenceService {
 		}
 	}
 
+	/**
+	 * Проверяет, что строка RRULE непустая и содержит канонический префикс `RRULE:`.
+	 */
 	private normalizeRRuleString(value: string): string {
 		const normalized = value.trim();
 		if (!normalized) {

@@ -29,10 +29,18 @@ import { SPACE_TG_CHAT_QUERY, SpaceTgChatQuery } from 'spaces';
 
 const REMINDER_TARGETS_REQUIRED_ERROR = 'Для добавления напоминаний нужно привязать ТГ канал';
 
+/**
+ * Данные reminder в команде обновления.
+ */
 type ReminderInput = {
 	offsetMinutes: number;
 };
 
+/**
+ * Команда полного обновления.
+ *
+ * Здесь намеренно используется детерминированное полное обновление, а не частичное.
+ */
 type Cmd = {
 	eventId: string;
 	spaceId: string;
@@ -47,6 +55,12 @@ type Cmd = {
 	occurrenceStart?: Date;
 };
 
+/**
+ * Обновляет события по области изменения (`scope`):
+ * - `SERIES`: переписать всю серию;
+ * - `THIS`: идемпотентно обновить исключение и `detached`-замену;
+ * - `THIS_AND_FUTURE`: разделить серию с выбранного инстанса.
+ */
 @Injectable()
 export class UpdateEventUseCase {
 	constructor(
@@ -68,6 +82,9 @@ export class UpdateEventUseCase {
 		private readonly recurrenceService: RecurrenceService,
 	) {}
 
+	/**
+	 * Основной роутинг логики обновления.
+	 */
 	async execute(cmd: Cmd): Promise<void> {
 		return runUseCase(async () => {
 			const event = await this.eventRepository.findByIdWithSpaceId(cmd.eventId, cmd.spaceId);
@@ -107,6 +124,9 @@ export class UpdateEventUseCase {
 		});
 	}
 
+	/**
+	 * Проверяет, что у операций с областью (`scope`) есть валидный якорь инстанса.
+	 */
 	private requireOccurrenceStart(cmd: Cmd): Date {
 		const hasOccurrenceStart =
 			cmd.occurrenceStart instanceof Date && !Number.isNaN(cmd.occurrenceStart.getTime());
@@ -120,6 +140,15 @@ export class UpdateEventUseCase {
 		return cmd.occurrenceStart;
 	}
 
+	/**
+	 * Полностью заменяет определение серии.
+	 *
+	 * Побочные действия:
+	 * - удаляются `detached`-инстансы;
+	 * - удаляются исключения;
+	 * - снимается планирование удаленных reminders;
+	 * - выполняется перепланирование reminders корневой серии.
+	 */
 	private async applySeriesUpdate(event: Event, cmd: Cmd): Promise<void> {
 		const previousReminderIds = event.reminders.map((reminder) => reminder.id);
 		this.applyPatchToExistingEvent(event, cmd);
@@ -142,6 +171,13 @@ export class UpdateEventUseCase {
 		await this.reminderPlanningService.replanEvent(event.id);
 	}
 
+	/**
+	 * Переписывает один слот серии через идемпотентное обновление исключения и `detached`-замены.
+	 *
+	 * Идемпотентность:
+	 * - тот же `(eventId, occurrenceStart)` обновляет существующий `detached`, если он есть;
+	 * - иначе `detached` создается один раз.
+	 */
 	private async applyThisUpdate(event: Event, occurrenceStart: Date, cmd: Cmd): Promise<void> {
 		await this.eventExceptionRepository.upsert(event.id, occurrenceStart);
 
@@ -174,6 +210,16 @@ export class UpdateEventUseCase {
 		await this.reminderPlanningService.replanEvent(detachedEvent.id);
 	}
 
+	/**
+	 * Делит повторяющуюся серию в точке `occurrenceStart`.
+	 *
+	 * Правила:
+	 * - если точка разделения равна старту серии, это эквивалент `SERIES`;
+	 * - иначе:
+	 *   1) старой серии ставится `UNTIL=previous occurrence`;
+	 *   2) создается новая tail-серия из данных команды;
+	 *   3) будущие исключения и `detached`-связи переносятся в хвост.
+	 */
 	private async applyFutureUpdate(event: Event, occurrenceStart: Date, cmd: Cmd): Promise<void> {
 		const isFromSeriesStart = occurrenceStart.getTime() === event.start.value.getTime();
 		if (isFromSeriesStart) {
@@ -228,6 +274,9 @@ export class UpdateEventUseCase {
 		}
 	}
 
+	/**
+	 * Применяет полные данные команды к существующему событию.
+	 */
 	private applyPatchToExistingEvent(event: Event, cmd: Cmd): void {
 		event.changeTitle(cmd.title);
 		event.changeDescription(cmd.description);
@@ -243,6 +292,11 @@ export class UpdateEventUseCase {
 		event.replaceReminders(this.createReminders(cmd.reminders, event.id));
 	}
 
+	/**
+	 * Применяет полные данные команды к `detached`-событию.
+	 *
+	 * `detached` всегда одноразовый (`rrule` очищается).
+	 */
 	private applyPatchToDetachedEvent(
 		detached: Event,
 		originEvent: Event,
@@ -258,6 +312,9 @@ export class UpdateEventUseCase {
 		detached.replaceReminders(this.createReminders(cmd.reminders, detached.id));
 	}
 
+	/**
+	 * Создает новую хвостовую повторяющуюся серию после разделения.
+	 */
 	private createTailEvent(params: { originEvent: Event; cmd: Cmd }): Event {
 		const { originEvent, cmd } = params;
 		const createdAt = DateTime.now();
@@ -283,6 +340,9 @@ export class UpdateEventUseCase {
 		});
 	}
 
+	/**
+	 * Создает одноразовую `detached`-замену для одного исходного инстанса.
+	 */
 	private createDetachedEvent(params: {
 		originEvent: Event;
 		occurrenceStart: Date;
@@ -309,6 +369,9 @@ export class UpdateEventUseCase {
 		});
 	}
 
+	/**
+	 * Создает reminder-сущности из данных запроса.
+	 */
 	private createReminders(
 		reminders: ReminderInput[],
 		eventId: string,
@@ -326,6 +389,9 @@ export class UpdateEventUseCase {
 		);
 	}
 
+	/**
+	 * Вычисляет ids reminders, удаленных в результате обновления.
+	 */
 	private collectRemovedReminderIds(
 		beforeReminderIds: string[],
 		afterReminders: readonly EventReminder[],
@@ -334,6 +400,9 @@ export class UpdateEventUseCase {
 		return beforeReminderIds.filter((id) => !afterIds.has(id));
 	}
 
+	/**
+	 * Проверяет, что reminders можно задавать только при наличии активной TG-цели.
+	 */
 	private async ensureReminderTargetsIfNeeded(
 		spaceId: string,
 		reminders: ReminderInput[],
@@ -348,6 +417,9 @@ export class UpdateEventUseCase {
 		}
 	}
 
+	/**
+	 * Проверяет, что `recurrence.until` не раньше `start` для повторяющихся событий.
+	 */
 	private ensureRecurrenceUntilValid(recurrence: RecurrenceConfig, start: Date): void {
 		const isRecurring = recurrence.type !== 'NONE';
 		const hasInvalidUntil =

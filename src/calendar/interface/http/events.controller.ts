@@ -25,6 +25,11 @@ import { AuthenticatedRequest } from 'common/types/authenticated-request.interfa
 import { formatResponse } from 'common/utils/response.util';
 import { JwtAuthGuard } from 'users';
 
+/**
+ * HTTP-контроллер событий календаря.
+ *
+ * Все операции выполняются в контексте текущего авторизованного space.
+ */
 @UseGuards(JwtAuthGuard)
 @Controller('events')
 export class EventsController {
@@ -35,6 +40,9 @@ export class EventsController {
 		private readonly updateEventUseCase: UpdateEventUseCase,
 	) {}
 
+	/**
+	 * Возвращает материализованные инстансы событий в заданном диапазоне дат.
+	 */
 	@Get()
 	async get(@Query() query: GetEventsQueryDto, @Request() req: AuthenticatedRequest) {
 		const { currentSpaceId } = req;
@@ -47,6 +55,9 @@ export class EventsController {
 		return formatResponse(response, 'События получены');
 	}
 
+	/**
+	 * Создает одноразовое событие или повторяющуюся серию.
+	 */
 	@Post()
 	async create(@Body() createEventDto: CreateEventDto, @Request() req: AuthenticatedRequest) {
 		const { user, currentSpaceId } = req;
@@ -67,6 +78,9 @@ export class EventsController {
 		return formatResponse(response, 'Событие создано');
 	}
 
+	/**
+	 * Обновляет событие согласно запрошенному scope.
+	 */
 	@Patch(':eventId')
 	async update(
 		@Param('eventId') eventId: string,
@@ -90,6 +104,9 @@ export class EventsController {
 		return formatResponse(null, 'Событие обновлено');
 	}
 
+	/**
+	 * Удаляет либо всю серию/событие, либо один инстанс в зависимости от scope.
+	 */
 	@Delete(':eventId')
 	async delete(
 		@Param('eventId') eventId: string,

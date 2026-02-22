@@ -25,6 +25,12 @@ import {
 	type NextReminderOccurrence,
 } from 'calendar/application/services/reminder-planning/find-next-reminder-occurrence';
 
+/**
+ * Оркестратор планирования напоминаний.
+ *
+ * Держит persist-состояние (`nextOccurrenceStart`, `scheduledAt`)
+ * в согласованном виде с актуальными event/exception данными.
+ */
 @Injectable()
 export class ReminderPlanningService implements ReminderPlanning {
 	private readonly logger = new Logger(ReminderPlanningService.name);
@@ -42,11 +48,17 @@ export class ReminderPlanningService implements ReminderPlanning {
 		private readonly recurrenceService: RecurrenceService,
 	) {}
 
+	/**
+	 * Переиспользуемое состояние "плана нет".
+	 */
 	private readonly emptyPlanningState = {
 		nextOccurrenceStart: null,
 		scheduledAt: null,
 	};
 
+	/**
+	 * Перепланирует все reminders конкретного события.
+	 */
 	async replanEvent(eventId: string, now: Date = new Date()): Promise<void> {
 		const event = await this.eventRepository.findById(eventId);
 		if (!event) {
@@ -66,6 +78,11 @@ export class ReminderPlanningService implements ReminderPlanning {
 		}
 	}
 
+	/**
+	 * Перепланирует один reminder по `reminderId`.
+	 *
+	 * Используется процессором очереди после отправки/пропуска и в сценариях изменений.
+	 */
 	async replanReminder(reminderId: string, params: ReplanReminderParams = {}): Promise<void> {
 		const reminderState = await this.eventRepository.findReminderPlanningState(reminderId);
 		if (!reminderState) {
@@ -111,6 +128,13 @@ export class ReminderPlanningService implements ReminderPlanning {
 		});
 	}
 
+	/**
+	 * Считает и сохраняет следующий план для одного reminder.
+	 *
+	 * Затем синхронизирует очередь:
+	 * - удаляет устаревшие jobs;
+	 * - ставит новую job, если есть будущий инстанс.
+	 */
 	private async replanOne(params: {
 		event: Event;
 		exceptions: EventException[];
@@ -169,6 +193,9 @@ export class ReminderPlanningService implements ReminderPlanning {
 		);
 	}
 
+	/**
+	 * Загружает исключения только для повторяющихся событий.
+	 */
 	private async getExceptions(event: Event): Promise<EventException[]> {
 		if (!event.isRecurring()) {
 			return [];

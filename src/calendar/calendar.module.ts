@@ -28,6 +28,12 @@ import { ConfigModule } from '@nestjs/config';
 import { SPACE_TG_CHAT_QUERY } from 'spaces';
 import { UsersModule } from 'users';
 
+/**
+ * Модуль bounded-context календаря.
+ *
+ * Связывает HTTP API, слой сценариев, сервисы повторений и напоминаний,
+ * адаптеры хранения и процессор очереди отправки напоминаний.
+ */
 @Module({
 	controllers: [EventsController],
 	providers: [
