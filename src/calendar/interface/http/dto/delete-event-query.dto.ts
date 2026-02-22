@@ -1,10 +1,18 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Min } from 'class-validator';
+import { IsDate, IsIn, IsOptional } from 'class-validator';
 
+/**
+ * DTO query-параметров для маршрута удаления.
+ */
 export class DeleteEventQueryDto {
 	@IsOptional()
-	@Type(() => Number)
-	@IsInt()
-	@Min(0)
-	orderIndex?: number;
+	@IsIn(['SERIES', 'THIS'])
+	// По умолчанию в use-case используется SERIES.
+	scope?: 'SERIES' | 'THIS';
+
+	@IsOptional()
+	@Type(() => Date)
+	@IsDate()
+	// Обязателен в runtime при scope=THIS.
+	occurrenceStart?: Date;
 }

@@ -1,14 +1,14 @@
 import type { Event } from 'calendar/domain/event.entity';
-import type { EventOverride } from 'calendar/domain/event-override.entity';
+import type { EventException } from 'calendar/domain/event-exception.entity';
 
 import {
 	EVENT_REPOSITORY,
 	EventRepository,
 } from 'calendar/application/ports/event/event.repository';
 import {
-	EVENT_OVERRIDE_REPOSITORY,
-	EventOverrideRepository,
-} from 'calendar/application/ports/event-override/event-override.repository';
+	EVENT_EXCEPTION_REPOSITORY,
+	EventExceptionRepository,
+} from 'calendar/application/ports/event-exception/event-exception.repository';
 import {
 	type ReminderPlanning,
 	type ReplanReminderParams,
@@ -19,15 +19,17 @@ import {
 } from 'calendar/application/ports/reminder-scheduler/reminder-scheduler.port';
 
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { RecurrenceService } from 'calendar/application/services/recurrence/recurrence.service';
 import {
 	findNextReminderOccurrence,
 	type NextReminderOccurrence,
 } from 'calendar/application/services/reminder-planning/find-next-reminder-occurrence';
 
 /**
- * Поддерживает скользящее планирование напоминаний.
+ * Оркестратор планирования напоминаний.
  *
- * Для каждого напоминания хранит только ближайший будущий инстанс в БД и очереди.
+ * Держит persist-состояние (`nextOccurrenceStart`, `scheduledAt`)
+ * в согласованном виде с актуальными event/exception данными.
  */
 @Injectable()
 export class ReminderPlanningService implements ReminderPlanning {
@@ -37,58 +39,51 @@ export class ReminderPlanningService implements ReminderPlanning {
 		@Inject(EVENT_REPOSITORY)
 		private readonly eventRepository: EventRepository,
 
-		@Inject(EVENT_OVERRIDE_REPOSITORY)
-		private readonly eventOverrideRepository: EventOverrideRepository,
+		@Inject(EVENT_EXCEPTION_REPOSITORY)
+		private readonly eventExceptionRepository: EventExceptionRepository,
 
 		@Inject(REMINDER_SCHEDULER)
 		private readonly reminderScheduler: ReminderScheduler,
+
+		private readonly recurrenceService: RecurrenceService,
 	) {}
 
-	/** Пустое состояние планирования, когда будущих инстансов больше нет. */
+	/**
+	 * Переиспользуемое состояние "плана нет".
+	 */
 	private readonly emptyPlanningState = {
-		nextOrderIndex: null,
 		nextOccurrenceStart: null,
 		scheduledAt: null,
 	};
 
 	/**
-	 * Перестраивает планирование для всех напоминаний события.
-	 *
-	 * @param eventId Идентификатор события.
-	 * @param now Текущее время планирования (по умолчанию системное).
+	 * Перепланирует все reminders конкретного события.
 	 */
 	async replanEvent(eventId: string, now: Date = new Date()): Promise<void> {
-		// 1) Загружаем событие и проверяем, что оно существует.
 		const event = await this.eventRepository.findById(eventId);
 		if (!event) {
 			this.logger.warn(`Пропуск перепланирования event=${eventId}: событие не найдено`);
 			return;
 		}
 
-		// 2) Загружаем переопределения (для NEVER они не нужны).
-		const overrides = await this.getOverrides(event);
-
-		// 3) Перепланируем каждое напоминание независимо.
+		const exceptions = await this.getExceptions(event);
 		for (const reminder of event.reminders) {
 			await this.replanOne({
 				event,
-				overrides,
+				exceptions,
 				reminderId: reminder.id,
 				offsetMinutes: reminder.offsetMinutes,
 				now,
-				startOrderHint: 0,
 			});
 		}
 	}
 
 	/**
-	 * Перестраивает планирование для одного напоминания и ставит следующий job.
+	 * Перепланирует один reminder по `reminderId`.
 	 *
-	 * @param reminderId Идентификатор напоминания.
-	 * @param params Дополнительные параметры планирования.
+	 * Используется процессором очереди после отправки/пропуска и в сценариях изменений.
 	 */
 	async replanReminder(reminderId: string, params: ReplanReminderParams = {}): Promise<void> {
-		// 1) Берем состояние планирования напоминания из БД.
 		const reminderState = await this.eventRepository.findReminderPlanningState(reminderId);
 		if (!reminderState) {
 			await this.reminderScheduler.unschedule(reminderId);
@@ -98,7 +93,6 @@ export class ReminderPlanningService implements ReminderPlanning {
 			return;
 		}
 
-		// 2) Загружаем событие-владелец напоминания.
 		const event = await this.eventRepository.findById(reminderState.eventId);
 		if (!event) {
 			await this.reminderScheduler.unschedule(reminderId);
@@ -123,41 +117,43 @@ export class ReminderPlanningService implements ReminderPlanning {
 			return;
 		}
 
-		// 3) Пересчитываем и сохраняем следующий инстанс напоминания.
-		const overrides = await this.getOverrides(event);
-
+		const exceptions = await this.getExceptions(event);
 		await this.replanOne({
 			event,
-			overrides,
+			exceptions,
 			reminderId,
 			offsetMinutes: reminder.offsetMinutes,
 			now: params.now ?? new Date(),
-			startOrderHint: params.startOrderHint ?? 0,
+			startOccurrenceHint: params.startOccurrenceHint,
 		});
 	}
 
 	/**
-	 * Считает и сохраняет ближайший инстанс напоминания, затем обновляет job в очереди.
-	 * Если будущих инстансов нет — очищает состояние планирования.
+	 * Считает и сохраняет следующий план для одного reminder.
+	 *
+	 * Затем синхронизирует очередь:
+	 * - удаляет устаревшие jobs;
+	 * - ставит новую job, если есть будущий инстанс.
 	 */
 	private async replanOne(params: {
 		event: Event;
-		overrides: EventOverride[];
+		exceptions: EventException[];
 		reminderId: string;
 		offsetMinutes: number;
 		now: Date;
-		startOrderHint: number;
+		startOccurrenceHint?: Date;
 	}): Promise<void> {
-		const { event, overrides, reminderId, offsetMinutes, now, startOrderHint } = params;
+		const { event, exceptions, reminderId, offsetMinutes, now, startOccurrenceHint } = params;
 
 		let nextOccurrence: NextReminderOccurrence | null = null;
 		try {
 			nextOccurrence = findNextReminderOccurrence({
 				event,
-				overrides,
+				exceptions,
 				offsetMinutes,
 				now,
-				startOrderHint,
+				startOccurrenceHint,
+				recurrenceService: this.recurrenceService,
 			});
 		} catch (error) {
 			this.logger.error(
@@ -168,46 +164,43 @@ export class ReminderPlanningService implements ReminderPlanning {
 		}
 
 		if (!nextOccurrence) {
-			// Серия завершилась или все будущие инстансы уже просрочены.
 			await this.eventRepository.updateReminderPlanningState(
 				reminderId,
 				this.emptyPlanningState,
 			);
 			await this.reminderScheduler.unschedule(reminderId);
 			this.logger.log(
-				`reminder_replanned reminderId=${reminderId} eventId=${event.id} nextOrderIndex=null scheduledAt=null reason=нет_будущих_инстансов`,
+				`reminder_replanned reminderId=${reminderId} eventId=${event.id} nextOccurrenceStart=null scheduledAt=null reason=нет_будущих_инстансов`,
 			);
 			return;
 		}
 
-		// 1) Сохраняем новое состояние планирования.
 		await this.eventRepository.updateReminderPlanningState(reminderId, {
-			nextOrderIndex: nextOccurrence.orderIndex,
 			nextOccurrenceStart: nextOccurrence.occurrenceStart,
 			scheduledAt: nextOccurrence.scheduledAt,
 		});
-		// 2) Атомарно через remove+add обеспечиваем единственный актуальный job.
 		await this.reminderScheduler.unschedule(reminderId);
 		await this.reminderScheduler.schedule({
 			reminderId,
-			plannedOrderIndex: nextOccurrence.orderIndex,
 			plannedOccurrenceStartAt: nextOccurrence.occurrenceStart,
 			scheduledAt: nextOccurrence.scheduledAt,
 		});
 
 		this.logger.log(
-			`reminder_replanned reminderId=${reminderId} eventId=${event.id} nextOrderIndex=${
-				nextOccurrence.orderIndex
-			} scheduledAt=${nextOccurrence.scheduledAt.toISOString()}`,
+			`reminder_replanned reminderId=${reminderId} eventId=${
+				event.id
+			} nextOccurrenceStart=${nextOccurrence.occurrenceStart.toISOString()} scheduledAt=${nextOccurrence.scheduledAt.toISOString()}`,
 		);
 	}
 
-	/** Загружает override-ы только для повторяющихся событий. */
-	private async getOverrides(event: Event): Promise<EventOverride[]> {
-		if (event.frequency === 'NEVER') {
+	/**
+	 * Загружает исключения только для повторяющихся событий.
+	 */
+	private async getExceptions(event: Event): Promise<EventException[]> {
+		if (!event.isRecurring()) {
 			return [];
 		}
 
-		return this.eventOverrideRepository.findByEventId(event.id);
+		return this.eventExceptionRepository.findByEventId(event.id);
 	}
 }

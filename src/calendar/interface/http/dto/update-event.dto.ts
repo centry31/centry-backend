@@ -1,3 +1,5 @@
+import { RecurrenceDto } from './recurrence.dto';
+
 import { Type } from 'class-transformer';
 import {
 	ArrayMaxSize,
@@ -14,13 +16,21 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
+/**
+ * DTO напоминания для маршрута обновления.
+ */
 class UpdateEventReminderDto {
 	@IsInt()
 	@Min(0)
-	@Max(60 * 24 * 14) // до 14 дней
+	@Max(60 * 24 * 14)
 	offsetMinutes: number;
 }
 
+/**
+ * DTO запроса на обновление события.
+ *
+ * Endpoint использует детерминированную семантику полного обновления полей.
+ */
 export class UpdateEventDto {
 	@IsString()
 	@IsNotEmpty()
@@ -35,11 +45,6 @@ export class UpdateEventDto {
 	@Type(() => Date)
 	start: Date;
 
-	@IsOptional()
-	@Type(() => Date)
-	@IsDate()
-	repeatUntil?: Date;
-
 	@Type(() => Number)
 	@IsInt()
 	@Min(1)
@@ -47,19 +52,23 @@ export class UpdateEventDto {
 
 	@IsString()
 	@IsNotEmpty()
-	@IsIn(['ONE', 'FUTURE'])
-	updateType: 'ONE' | 'FUTURE';
+	timeZone: string;
 
-	@IsOptional()
-	@Type(() => Number)
-	@IsInt()
-	@Min(0)
-	orderIndex?: number;
+	@ValidateNested()
+	@Type(() => RecurrenceDto)
+	recurrence: RecurrenceDto;
 
 	@IsString()
 	@IsNotEmpty()
-	@IsIn(['NEVER', 'DAILY', 'WEEKLY', 'DOUBLE_WEEKLY', 'MONTHLY'])
-	frequency: 'NEVER' | 'DAILY' | 'WEEKLY' | 'DOUBLE_WEEKLY' | 'MONTHLY';
+	@IsIn(['SERIES', 'THIS', 'THIS_AND_FUTURE'])
+	// Определяет scope изменения для recurring-событий.
+	scope: 'SERIES' | 'THIS' | 'THIS_AND_FUTURE';
+
+	@IsOptional()
+	@Type(() => Date)
+	@IsDate()
+	// Обязателен в runtime для THIS и THIS_AND_FUTURE на recurring-событиях.
+	occurrenceStart?: Date;
 
 	@IsOptional()
 	@IsArray()

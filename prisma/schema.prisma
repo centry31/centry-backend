@@ -159,7 +159,6 @@ model EventReminder {
   // userId String? // null = всем участникам; иначе персонально
 
   // ближайший запланированный инстанс reminder
-  nextOrderIndex      Int?
   nextOccurrenceStart DateTime?
   scheduledAt         DateTime?
 
@@ -175,25 +174,23 @@ model EventReminder {
   @@map("event_reminders")
 }
 
-enum Frequency {
-  NEVER
-  DAILY
-  WEEKLY
-  DOUBLE_WEEKLY
-  MONTHLY
-}
-
 model Event {
   id          String  @id @default(uuid())
   title       String
   description String?
 
   start    DateTime
-  repeatUntil DateTime?
+  rrule    String?
+  timeZone String
   duration Int
   isAllDay Boolean  @default(false)
 
   location String?
+
+  detachedFromEventId         String?
+  detachedFromOccurrenceStart DateTime?
+  detachedFromEvent           Event?    @relation("DetachedEvents", fields: [detachedFromEventId], references: [id], onDelete: Cascade)
+  detachedEvents              Event[]   @relation("DetachedEvents")
 
   spaceId String
   space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
@@ -204,27 +201,23 @@ model Event {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  reminders      EventReminder[]
-  eventOverrides EventOverride[]
+  reminders  EventReminder[]
+  exceptions EventException[]
 
-  frequency Frequency @default(NEVER)
-
+  @@unique([detachedFromEventId, detachedFromOccurrenceStart])
+  @@index([spaceId, detachedFromEventId])
   @@map("events")
 }
 
-model EventOverride {
+model EventException {
   id String @id @default(uuid())
 
-  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  eventId String
+  event           Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId         String
+  occurrenceStart DateTime
+  createdAt       DateTime @default(now())
 
-  orderIndex Int
-  offset     Int
-
-  isDeleted    Boolean @default(false)
-  isOffsetOnce Boolean @default(true)
-
-  @@unique([eventId, orderIndex])
-  @@index([eventId, orderIndex])
-  @@map("event_overrides")
+  @@unique([eventId, occurrenceStart])
+  @@index([eventId, occurrenceStart])
+  @@map("event_exceptions")
 }

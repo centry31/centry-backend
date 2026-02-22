@@ -3,26 +3,44 @@ import type { DateTime } from 'common/domain/value-objects/date-time.vo';
 
 import type { EventReminder } from './event-reminder.entity';
 
-export type EventFrequency = 'NEVER' | 'DAILY' | 'WEEKLY' | 'DOUBLE_WEEKLY' | 'MONTHLY';
-
+/**
+ * Данные конструктора доменной сущности {@link Event}.
+ *
+ * Одна и та же сущность используется для:
+ * - обычного одноразового события (`rrule` не задан);
+ * - корня повторяющейся серии (`rrule` задан);
+ * - `detached`-переопределения одного инстанса (`detachedFrom*` заданы).
+ */
 type EventProps = {
 	id: string;
 	title: string;
 	description?: string;
 
 	start: DateTime;
-	repeatUntil?: DateTime;
+	rrule?: string;
+	timeZone: string;
 	duration: number;
 
 	spaceId: string;
 	createdById: string;
 	createdAt: DateTime;
 
-	reminders?: EventReminder[]; // по умолчанию []
+	detachedFromEventId?: string;
+	detachedFromOccurrenceStart?: DateTime;
 
-	frequency: EventFrequency;
+	reminders?: EventReminder[];
 };
 
+/**
+ * Корневая агрегатная сущность календарного события.
+ *
+ * Инварианты:
+ * - `title` не пустой после trim;
+ * - `timeZone` не пустой после trim;
+ * - `duration` — целое положительное число минут;
+ * - `detached`-связка либо полностью задана, либо полностью пуста;
+ * - reminders согласованы с текущими полями планирования и старта.
+ */
 export class Event {
 	public readonly id: string;
 	public readonly spaceId: string;
@@ -32,11 +50,16 @@ export class Event {
 	private _title: string;
 	private _description?: string;
 	private _start: DateTime;
-	private _repeatUntil?: DateTime;
+	private _rrule?: string;
+	private _timeZone: string;
 	private _duration: number;
 	private _reminders: EventReminder[];
-	private _frequency: EventFrequency = 'NEVER';
+	private _detachedFromEventId?: string;
+	private _detachedFromOccurrenceStart?: DateTime;
 
+	/**
+	 * Создает агрегат события и валидирует инварианты.
+	 */
 	constructor(props: EventProps) {
 		this.id = props.id;
 		this.spaceId = props.spaceId;
@@ -46,42 +69,98 @@ export class Event {
 		this._title = this.normalizeTitle(props.title);
 		this._description = props.description;
 		this._start = props.start;
-		this._repeatUntil = props.repeatUntil;
+		this._rrule = props.rrule;
+		this._timeZone = this.normalizeTimeZone(props.timeZone);
 		this._duration = props.duration;
 
+		this._detachedFromEventId = props.detachedFromEventId;
+		this._detachedFromOccurrenceStart = props.detachedFromOccurrenceStart;
+
 		this._reminders = props.reminders ? props.reminders.slice() : [];
-		this._frequency = props.frequency;
 
 		this.ensureRemindersCoherent();
 		this.ensureDurationValid(this._duration);
+		this.ensureDetachedLinkCoherent();
 	}
 
+	/**
+	 * Заголовок события.
+	 */
 	get title(): string {
 		return this._title;
 	}
 
+	/**
+	 * Описание события (опционально).
+	 */
 	get description(): string | undefined {
 		return this._description;
 	}
 
+	/**
+	 * Момент старта в UTC.
+	 *
+	 * Для корня серии это якорь серии (первый инстанс).
+	 * Для `detached` это фактический новый старт переопределенного инстанса.
+	 */
 	get start(): DateTime {
 		return this._start;
 	}
 
-	get duration() {
+	/**
+	 * Каноническое RRULE-представление (`RRULE:...`) для повторяющихся событий.
+	 */
+	get rrule(): string | undefined {
+		return this._rrule;
+	}
+
+	/**
+	 * IANA-таймзона события для wall-clock семантики повторений.
+	 */
+	get timeZone(): string {
+		return this._timeZone;
+	}
+
+	/**
+	 * Длительность в минутах.
+	 */
+	get duration(): number {
 		return this._duration;
 	}
 
-	get repeatUntil(): DateTime | undefined {
-		return this._repeatUntil;
-	}
-
+	/**
+	 * Напоминания события.
+	 */
 	get reminders(): readonly EventReminder[] {
 		return this._reminders;
 	}
 
-	get frequency() {
-		return this._frequency;
+	/**
+	 * Идентификатор исходной серии для `detached`-события.
+	 */
+	get detachedFromEventId(): string | undefined {
+		return this._detachedFromEventId;
+	}
+
+	/**
+	 * Якорь исходного инстанса для `detached`-события.
+	 */
+	get detachedFromOccurrenceStart(): DateTime | undefined {
+		return this._detachedFromOccurrenceStart;
+	}
+
+	/**
+	 * Возвращает `true`, если событие повторяющееся (есть `rrule`).
+	 */
+	isRecurring(): boolean {
+		return Boolean(this._rrule);
+	}
+
+	/**
+	 * Возвращает `true` для `detached`-переопределения одного инстанса.
+	 */
+	isDetached(): boolean {
+		return Boolean(this._detachedFromEventId);
 	}
 
 	private normalizeTitle(title: string): string {
@@ -93,9 +172,18 @@ export class Event {
 		return normalizedTitle;
 	}
 
+	private normalizeTimeZone(timeZone: string): string {
+		const normalizedTimeZone = timeZone.trim();
+		if (!normalizedTimeZone) {
+			throw new DomainValidationError('timeZone cannot be empty');
+		}
+
+		return normalizedTimeZone;
+	}
+
 	private ensureRemindersCoherent(): void {
-		for (const r of this._reminders) {
-			r.ensureCoherentWith(this._start);
+		for (const reminder of this._reminders) {
+			reminder.ensureCoherentWith(this._start);
 		}
 	}
 
@@ -108,51 +196,101 @@ export class Event {
 		}
 	}
 
+	private ensureDetachedLinkCoherent(): void {
+		const hasDetachedFromEventId = Boolean(this._detachedFromEventId);
+		const hasDetachedFromOccurrenceStart = Boolean(this._detachedFromOccurrenceStart);
+		const hasHalfDetachedLink = hasDetachedFromEventId !== hasDetachedFromOccurrenceStart;
+		if (hasHalfDetachedLink) {
+			throw new DomainValidationError(
+				'detachedFromEventId and detachedFromOccurrenceStart must be set together',
+			);
+		}
+	}
+
+	/**
+	 * Обновляет заголовок с валидацией.
+	 */
 	changeTitle(title: string): void {
 		this._title = this.normalizeTitle(title);
 	}
 
+	/**
+	 * Обновляет описание.
+	 */
 	changeDescription(desc?: string): void {
 		this._description = desc;
 	}
 
+	/**
+	 * Обновляет старт и пересчитывает `scheduledAt` у reminders.
+	 */
 	changeStart(start: DateTime): void {
 		this._start = start;
-		// Пересчитываем абсолютное время напоминаний по формуле:
-		// `scheduledAt = start - offset`.
-		this._reminders = this._reminders.map((r) => r.recalculateFor(start));
+		this._reminders = this._reminders.map((reminder) => reminder.recalculateFor(start));
 	}
 
-	changeRepeatUntil(repeatUntil?: DateTime): void {
-		this._repeatUntil = repeatUntil;
+	/**
+	 * Заменяет правило повторения. `undefined` означает одноразовое событие.
+	 */
+	changeRecurrence(rrule?: string): void {
+		this._rrule = rrule;
 	}
 
+	/**
+	 * Обновляет time zone с проверкой на непустое значение.
+	 */
+	changeTimeZone(timeZone: string): void {
+		this._timeZone = this.normalizeTimeZone(timeZone);
+	}
+
+	/**
+	 * Атомарно обновляет старт и длительность, затем пересчитывает reminders.
+	 */
 	changeTimeRange(start: DateTime, duration: number): void {
 		this.ensureDurationValid(duration);
 		this._start = start;
 		this._duration = duration;
-		this._reminders = this._reminders.map((r) => r.recalculateFor(start));
+		this._reminders = this._reminders.map((reminder) => reminder.recalculateFor(start));
 	}
 
-	addReminder(rem: EventReminder): void {
-		rem.ensureCoherentWith(this._start);
-		this._reminders.push(rem);
+	/**
+	 * Устанавливает или очищает `detached`-связку.
+	 */
+	setDetachedLink(detachedFromEventId?: string, detachedFromOccurrenceStart?: DateTime): void {
+		this._detachedFromEventId = detachedFromEventId;
+		this._detachedFromOccurrenceStart = detachedFromOccurrenceStart;
+		this.ensureDetachedLinkCoherent();
 	}
 
+	/**
+	 * Добавляет reminder с проверкой согласованности относительно старта.
+	 */
+	addReminder(reminder: EventReminder): void {
+		reminder.ensureCoherentWith(this._start);
+		this._reminders.push(reminder);
+	}
+
+	/**
+	 * Полностью заменяет коллекцию reminders после проверок согласованности.
+	 */
 	replaceReminders(reminders: EventReminder[]): void {
-		for (const r of reminders) r.ensureCoherentWith(this._start);
+		for (const reminder of reminders) {
+			reminder.ensureCoherentWith(this._start);
+		}
 		this._reminders = reminders.slice();
 	}
 
+	/**
+	 * Удаляет reminder по id.
+	 */
 	removeReminder(reminderId: string): void {
-		this._reminders = this._reminders.filter((r) => r.id !== reminderId);
+		this._reminders = this._reminders.filter((reminder) => reminder.id !== reminderId);
 	}
 
+	/**
+	 * Удаляет все reminders.
+	 */
 	clearReminders(): void {
 		this._reminders = [];
-	}
-
-	changeFrequency(frequency: EventFrequency): void {
-		this._frequency = frequency;
 	}
 }

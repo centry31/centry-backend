@@ -8,12 +8,20 @@ import { ENV } from 'common/infrastructure/env';
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import axios from 'axios';
 
+/**
+ * HTTP-адаптер отправки уведомлений в Telegram.
+ *
+ * Отправляет reminders во внешний сервис бота.
+ */
 @Injectable()
 export class HttpTgNotifier implements TgNotifier {
 	private readonly logger = new Logger(HttpTgNotifier.name);
 	private readonly endpointUrl: string;
 	private readonly apiToken?: string;
 
+	/**
+	 * Инициализирует адрес отправки и проверяет обязательную конфигурацию.
+	 */
 	constructor() {
 		const baseUrl = ENV.TG_BOT_SERVICE_URL;
 		const path = '/reminders';
@@ -28,6 +36,9 @@ export class HttpTgNotifier implements TgNotifier {
 		this.apiToken = ENV.TG_API_TOKEN;
 	}
 
+	/**
+	 * Отправляет данные уведомления через HTTP POST.
+	 */
 	async send(cmd: SendTgNotifyCmd): Promise<void> {
 		try {
 			const headers = this.apiToken
@@ -67,6 +78,9 @@ export class HttpTgNotifier implements TgNotifier {
 		}
 	}
 
+	/**
+	 * Нормализует склейку базового URL и пути запроса.
+	 */
 	private joinUrl(baseUrl: string, path: string): string {
 		const normalizedBase = baseUrl.replace(/\/+$/, '');
 		const normalizedPath = path.replace(/^\/+/, '');

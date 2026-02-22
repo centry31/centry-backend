@@ -1,7 +1,7 @@
 import { CreateEventUseCase } from 'calendar/application/use-cases/create-event.use-case';
 import { DeleteEventUseCase } from 'calendar/application/use-cases/delete-event.use-case';
 import { GetSpaceEventsUseCase } from 'calendar/application/use-cases/get-space-events.use-case';
-import { UpdateEventUseCase } from 'calendar/application/use-cases/update-event/update-event.use-case';
+import { UpdateEventUseCase } from 'calendar/application/use-cases/update-event.use-case';
 
 import { CreateEventDto } from './dto/create-event.dto';
 import { DeleteEventQueryDto } from './dto/delete-event-query.dto';
@@ -25,7 +25,11 @@ import { AuthenticatedRequest } from 'common/types/authenticated-request.interfa
 import { formatResponse } from 'common/utils/response.util';
 import { JwtAuthGuard } from 'users';
 
-// НУЖНО: подключить все необходимые guard-ы для календаря
+/**
+ * HTTP-контроллер событий календаря.
+ *
+ * Все операции выполняются в контексте текущего авторизованного space.
+ */
 @UseGuards(JwtAuthGuard)
 @Controller('events')
 export class EventsController {
@@ -36,6 +40,9 @@ export class EventsController {
 		private readonly updateEventUseCase: UpdateEventUseCase,
 	) {}
 
+	/**
+	 * Возвращает материализованные инстансы событий в заданном диапазоне дат.
+	 */
 	@Get()
 	async get(@Query() query: GetEventsQueryDto, @Request() req: AuthenticatedRequest) {
 		const { currentSpaceId } = req;
@@ -45,33 +52,35 @@ export class EventsController {
 			to: query.to,
 		});
 		const response = events.map((event) => toEventResponse(event));
-		return formatResponse(response, 'Напоминания получены');
+		return formatResponse(response, 'События получены');
 	}
 
+	/**
+	 * Создает одноразовое событие или повторяющуюся серию.
+	 */
 	@Post()
 	async create(@Body() createEventDto: CreateEventDto, @Request() req: AuthenticatedRequest) {
 		const { user, currentSpaceId } = req;
 		const event = await this.createEventUseCase.execute({
 			title: createEventDto.title,
-			description: createEventDto.description,
+			description: createEventDto.description ?? null,
 			start: createEventDto.start,
-			repeatUntil: createEventDto.repeatUntil,
 			duration: createEventDto.duration,
-
+			timeZone: createEventDto.timeZone,
+			recurrence: createEventDto.recurrence,
 			createdById: user.id,
 			spaceId: currentSpaceId,
-
 			reminders: createEventDto.reminders ?? [],
-
 			isNotifyMessage: createEventDto.isNotifyMessage,
 			notifyMessage: createEventDto.notifyMessage,
-
-			frequency: createEventDto.frequency,
 		});
 		const response = toEventResponse(event);
-		return formatResponse(response, 'Напоминание создано');
+		return formatResponse(response, 'Событие создано');
 	}
 
+	/**
+	 * Обновляет событие согласно запрошенному scope.
+	 */
 	@Patch(':eventId')
 	async update(
 		@Param('eventId') eventId: string,
@@ -82,23 +91,22 @@ export class EventsController {
 		await this.updateEventUseCase.execute({
 			eventId,
 			spaceId: currentSpaceId,
-
 			title: updateEventDto.title,
 			description: updateEventDto.description,
-
 			start: updateEventDto.start,
-			repeatUntil: updateEventDto.repeatUntil,
 			duration: updateEventDto.duration,
-
-			reminders: updateEventDto.reminders,
-			frequency: updateEventDto.frequency,
-
-			updateType: updateEventDto.updateType,
-			orderIndex: updateEventDto.orderIndex,
+			timeZone: updateEventDto.timeZone,
+			recurrence: updateEventDto.recurrence,
+			reminders: updateEventDto.reminders ?? [],
+			scope: updateEventDto.scope,
+			occurrenceStart: updateEventDto.occurrenceStart,
 		});
 		return formatResponse(null, 'Событие обновлено');
 	}
 
+	/**
+	 * Удаляет либо всю серию/событие, либо один инстанс в зависимости от scope.
+	 */
 	@Delete(':eventId')
 	async delete(
 		@Param('eventId') eventId: string,
@@ -109,8 +117,9 @@ export class EventsController {
 		await this.deleteEventUseCase.execute({
 			eventId,
 			spaceId: currentSpaceId,
-			orderIndex: query.orderIndex,
+			scope: query.scope,
+			occurrenceStart: query.occurrenceStart,
 		});
-		return formatResponse(null, 'Уведомление удалено');
+		return formatResponse(null, 'Событие удалено');
 	}
 }

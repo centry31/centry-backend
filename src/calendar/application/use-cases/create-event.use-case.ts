@@ -1,6 +1,5 @@
 import * as crypto from 'crypto';
 
-import type { EventFrequency } from 'calendar/domain/event.entity';
 import { Event } from 'calendar/domain/event.entity';
 import { EventReminder } from 'calendar/domain/event-reminder.entity';
 import { DateTime } from 'common/domain/value-objects/date-time.vo';
@@ -16,16 +15,24 @@ import {
 import { TG_NOTIFIER, TgNotifier } from 'calendar/application/ports/tg-notifier/tg-notifier.port';
 
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import {
+	type RecurrenceConfig,
+	RecurrenceService,
+} from 'calendar/application/services/recurrence/recurrence.service';
 import { runUseCase } from 'common/application/errors/run-use-case';
 import { SPACE_TG_CHAT_QUERY, SpaceTgChatQuery } from 'spaces';
 
+/**
+ * Команда создания нового события/серии.
+ */
 type Cmd = {
 	title: string;
 	description: string | null;
 
 	start: Date;
-	repeatUntil?: Date;
 	duration: number;
+	timeZone: string;
+	recurrence: RecurrenceConfig;
 
 	spaceId: string;
 	createdById: string;
@@ -34,19 +41,25 @@ type Cmd = {
 
 	isNotifyMessage?: boolean;
 	notifyMessage?: string;
-
-	frequency: EventFrequency;
 };
 
 type Reminder = {
 	offsetMinutes: number;
 };
 
+/**
+ * Данные, подготовленные до сохранения и побочных действий.
+ */
 type CreateBuildData = {
 	event: Event;
 	activeTargets: Awaited<ReturnType<SpaceTgChatQuery['getActiveTargetsBySpaceId']>>;
 };
 
+/**
+ * Создает событие и запускает первичное планирование reminders.
+ *
+ * Также опционально отправляет уведомление о создании в Telegram.
+ */
 @Injectable()
 export class CreateEventUseCase {
 	constructor(
@@ -61,8 +74,13 @@ export class CreateEventUseCase {
 
 		@Inject(TG_NOTIFIER)
 		private readonly tgNotifier: TgNotifier,
+
+		private readonly recurrenceService: RecurrenceService,
 	) {}
 
+	/**
+	 * Формирует текст информационного Telegram-сообщения о создании события.
+	 */
 	private buildNotifyMessage = (event: Event, notifyMessage?: string) => {
 		const start = event.start.value;
 		const end = new Date(start.getTime() + event.duration * 60_000);
@@ -74,6 +92,7 @@ export class CreateEventUseCase {
 				year: 'numeric',
 				hour: '2-digit',
 				minute: '2-digit',
+				timeZone: event.timeZone,
 			});
 
 		return [
@@ -88,6 +107,13 @@ export class CreateEventUseCase {
 			.join('\n');
 	};
 
+	/**
+	 * Основной процесс создания:
+	 * - валидация предусловий и нормализация повторений;
+	 * - сохранение события и reminders;
+	 * - планирование reminders;
+	 * - опциональная отправка notify-сообщений.
+	 */
 	async execute(cmd: Cmd): Promise<Event> {
 		return runUseCase(async () => {
 			const buildData = await this.buildCreateData(cmd);
@@ -108,6 +134,9 @@ export class CreateEventUseCase {
 		});
 	}
 
+	/**
+	 * Собирает валидную доменную модель и контекст для побочных действий.
+	 */
 	private async buildCreateData(cmd: Cmd): Promise<CreateBuildData> {
 		const activeTargets = await this.spaceTgChatQuery.getActiveTargetsBySpaceId(cmd.spaceId);
 
@@ -122,32 +151,26 @@ export class CreateEventUseCase {
 		}
 
 		const startVo = DateTime.fromDate(cmd.start);
-		const repeatUntilVo = cmd.repeatUntil ? DateTime.fromDate(cmd.repeatUntil) : undefined;
 		const createdAtVo = DateTime.now();
-
-		const isRecurringEvent = cmd.frequency !== 'NEVER';
-		const isRepeatUntilBeforeStart = repeatUntilVo
-			? repeatUntilVo.value.getTime() < startVo.value.getTime()
-			: false;
-		const hasInvalidRepeatUntil = isRecurringEvent && isRepeatUntilBeforeStart;
-		if (hasInvalidRepeatUntil) {
-			throw new HttpException(
-				'repeatUntil должен быть не раньше start для повторяющихся событий',
-				HttpStatus.BAD_REQUEST,
-			);
-		}
+		this.ensureRecurrenceUntilValid(cmd.recurrence, cmd.start);
+		this.recurrenceService.validateTimeZone(cmd.timeZone);
+		const rrule = this.recurrenceService.buildRRule({
+			recurrence: cmd.recurrence,
+			start: cmd.start,
+			timeZone: cmd.timeZone,
+		});
 
 		const event = new Event({
 			id: crypto.randomUUID(),
 			title: cmd.title,
-			description: cmd.description,
+			description: cmd.description ?? undefined,
 			start: startVo,
-			repeatUntil: cmd.frequency === 'NEVER' ? undefined : repeatUntilVo,
+			rrule: rrule ?? undefined,
+			timeZone: cmd.timeZone,
 			duration: cmd.duration,
 			spaceId: cmd.spaceId,
 			createdById: cmd.createdById,
 			createdAt: createdAtVo,
-			frequency: cmd.frequency,
 		});
 
 		const reminders = cmd.reminders.map(
@@ -160,7 +183,9 @@ export class CreateEventUseCase {
 					updatedAt: createdAtVo,
 				}),
 		);
-		reminders.forEach((reminder) => event.addReminder(reminder));
+		for (const reminder of reminders) {
+			event.addReminder(reminder);
+		}
 
 		return {
 			event,
@@ -168,11 +193,35 @@ export class CreateEventUseCase {
 		};
 	}
 
+	/**
+	 * Сохраняет агрегат события.
+	 */
 	private async applyCreateOperations(event: Event): Promise<Event> {
 		return this.eventRepository.create(event);
 	}
 
+	/**
+	 * Запускает планирование reminder jobs для нового события.
+	 */
 	private async applyCreateEffects(eventId: string): Promise<void> {
 		await this.reminderPlanningService.replanEvent(eventId);
+	}
+
+	/**
+	 * Проверяет, что `recurrence.until` не раньше `start` для повторяющихся событий.
+	 */
+	private ensureRecurrenceUntilValid(recurrence: RecurrenceConfig, start: Date): void {
+		const isRecurring = recurrence.type !== 'NONE';
+		const hasInvalidUntil =
+			isRecurring &&
+			recurrence.until instanceof Date &&
+			!Number.isNaN(recurrence.until.getTime()) &&
+			recurrence.until.getTime() < start.getTime();
+		if (hasInvalidUntil) {
+			throw new HttpException(
+				'recurrence.until должен быть не раньше start',
+				HttpStatus.BAD_REQUEST,
+			);
+		}
 	}
 }
