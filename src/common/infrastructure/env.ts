@@ -18,6 +18,10 @@ const EnvSchema = z.object({
 
 	TG_BOT_SERVICE_URL: z.string(),
 	TG_API_TOKEN: z.string(),
+
+	BMSTU_API_URL: z.string().default('https://lks.bmstu.ru/lks-back/api'),
+	BMSTU_SRV_URL: z.string().default('https://lks.bmstu.ru/lks-back/srv'),
+	BMSTU_CACHE_TTL_SECONDS: z.coerce.number().default(900),
 });
 
 export const ENV = EnvSchema.parse(process.env);

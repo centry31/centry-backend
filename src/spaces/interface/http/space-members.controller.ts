@@ -25,7 +25,6 @@ export class SpaceMembersController {
 		await this.leaveSpaceUseCase.execute({ spaceId, userId: user.id });
 	}
 
-	@UseGuards(SpaceMemberAccessGuard)
 	@Get(':spaceId')
 	async getList(@Param('spaceId') spaceId: string) {
 		const members = await this.getSpaceMembersUseCase.execute({ spaceId });

@@ -1,6 +1,7 @@
 import { CreateEventUseCase } from 'calendar/application/use-cases/create-event.use-case';
 import { DeleteEventUseCase } from 'calendar/application/use-cases/delete-event.use-case';
 import { GetSpaceEventsUseCase } from 'calendar/application/use-cases/get-space-events.use-case';
+import { ImportBmstuScheduleUseCase } from 'calendar/application/use-cases/import-bmstu-schedule.use-case';
 import { UpdateEventUseCase } from 'calendar/application/use-cases/update-event.use-case';
 
 import { CreateEventDto } from './dto/create-event.dto';
@@ -39,7 +40,31 @@ export class EventsController {
 		private readonly getSpaceEventsUseCase: GetSpaceEventsUseCase,
 		private readonly deleteEventUseCase: DeleteEventUseCase,
 		private readonly updateEventUseCase: UpdateEventUseCase,
+		private readonly importBmstuScheduleUseCase: ImportBmstuScheduleUseCase,
 	) {}
+
+	/**
+	 * Импортирует расписание Bmstu по `groupId` и сохраняет его в указанное пространство.
+	 */
+	@UseGuards(SpaceOwnerAccessGuard)
+	@Post(':spaceId/bmstu-import/:groupId')
+	async importBmstuByGroup(
+		@Param('spaceId') spaceId: string,
+		@Param('groupId') groupId: string,
+		@Query('timeZone') timeZone: string | undefined,
+		@Request() req: AuthenticatedRequest,
+	) {
+		const { user } = req;
+		const normalizedTimeZone = (timeZone ?? 'Europe/Moscow').trim() || 'Europe/Moscow';
+		const result = await this.importBmstuScheduleUseCase.execute({
+			spaceId,
+			groupId,
+			createdById: user.id,
+			timeZone: normalizedTimeZone,
+		});
+
+		return formatResponse(result, `Импортировано событий: ${result.importedCount}`);
+	}
 
 	/**
 	 * Возвращает материализованные инстансы событий в заданном диапазоне дат.
