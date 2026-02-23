@@ -40,8 +40,8 @@ export class SpaceMemberAccessGuard implements CanActivate {
 			throw new NotFoundException('Такое пространство не найдено');
 		}
 
-		const spaceMembers = await this.spaceMemberRepository.findManyBySpaceId(space.id);
-		if (!spaceMembers.find((member) => member.userId === userId)) {
+		const spaceMember = await this.spaceMemberRepository.findOne(userId, space.id);
+		if (!spaceMember) {
 			throw new ForbiddenException('Вы не состоите в данном пространстве');
 		}
 
