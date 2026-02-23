@@ -100,18 +100,45 @@ export class ImportBmstuScheduleService {
 
 		const duration = Math.max(1, Math.round((end.getTime() - start.getTime()) / 60_000));
 		const recurrence = this.mapRecurrence(rawEvent.rrule?.toString());
+		const sourceDescription = this.normalizeOptionalString(rawEvent.description);
+		const location = this.normalizeOptionalString(rawEvent.location);
+		const lecturer = this.extractLecturer(rawEvent.attendee);
+		const description = this.buildImportedDescription({
+			sourceDescription,
+			location,
+			lecturer,
+		});
 
 		return {
 			externalId: String(rawEvent.uid ?? ''),
 			title,
-			description: this.normalizeOptionalString(rawEvent.description),
-			location: this.normalizeOptionalString(rawEvent.location),
-			lecturer: this.extractLecturer(rawEvent.attendee),
+			description,
+			location,
+			lecturer,
 			start,
 			duration,
 			timeZone,
 			recurrence,
 		};
+	}
+
+	private buildImportedDescription(params: {
+		sourceDescription: string | null;
+		location: string | null;
+		lecturer: string | null;
+	}): string | null {
+		const lines: string[] = [];
+		if (params.sourceDescription) {
+			lines.push(params.sourceDescription);
+		}
+		if (params.location) {
+			lines.push(`Аудитория: ${params.location}`);
+		}
+		if (params.lecturer) {
+			lines.push(`Преподаватель: ${params.lecturer}`);
+		}
+
+		return lines.length > 0 ? lines.join('\n') : null;
 	}
 
 	private mapRecurrence(rruleText?: string): BmstuExternalRecurrence {
