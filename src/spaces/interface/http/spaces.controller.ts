@@ -4,6 +4,7 @@ import { GetSpaceUseCase } from '@spaces/application/use-cases/space/get-space.u
 import { GetUserSpacesUseCase } from '@spaces/application/use-cases/space/get-user-spaces.use-case';
 import { UpdateSpaceUseCase } from '@spaces/application/use-cases/space/update-space.use-case';
 
+import { SpaceOwnerAccessGuard } from '../guard/space-owner-access.guard';
 import { CreateSpaceDto } from './dto/space/create-space.dto';
 import { toSpaceResponse } from './dto/space/space-response.mapper';
 import { UpdateSpaceDto } from './dto/space/update-space.dto';
@@ -21,9 +22,9 @@ import {
 } from '@nestjs/common';
 import { AuthenticatedRequest } from 'common/types/authenticated-request.interface';
 import { formatResponse } from 'common/utils/response.util';
+import { SpaceMemberAccessGuard } from 'spaces';
 import { JwtAuthGuard } from 'users';
 
-// TODO: гварды
 @UseGuards(JwtAuthGuard)
 @Controller('spaces')
 export class SpacesController {
@@ -60,6 +61,7 @@ export class SpacesController {
 		return formatResponse(response, 'Пространства пользователя получены');
 	}
 
+	@UseGuards(SpaceMemberAccessGuard)
 	@Get(':spaceId')
 	async get(@Param('spaceId') spaceId: string, @Request() req: AuthenticatedRequest) {
 		const { user } = req;
@@ -68,6 +70,7 @@ export class SpacesController {
 		return formatResponse(response, 'Пространство получено');
 	}
 
+	@UseGuards(SpaceOwnerAccessGuard)
 	@Patch(':spaceId')
 	async update(
 		@Body() updateSpaceDto: UpdateSpaceDto,
@@ -84,6 +87,7 @@ export class SpacesController {
 		return formatResponse(null, 'Пространство обновлено');
 	}
 
+	@UseGuards(SpaceOwnerAccessGuard)
 	@Delete(':spaceId')
 	async delete(@Param('spaceId') spaceId: string) {
 		await this.deleteSpaceUseCase.execute({ spaceId });

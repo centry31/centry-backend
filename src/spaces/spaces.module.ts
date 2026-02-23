@@ -28,6 +28,8 @@ import { PrismaSpaceTgChatRepository } from './infrastructure/prisma/space-tg-ch
 import { PrismaSpaceTgChatLinkCodeRepository } from './infrastructure/prisma/space-tg-chat-link-code/prisma-space-tg-chat-link-code.repository';
 import { PrismaUserQuery } from './infrastructure/prisma/user-query/prisma-user.query';
 
+import { SpaceMemberAccessGuard } from './interface/guard/space-member-access.guard';
+import { SpaceOwnerAccessGuard } from './interface/guard/space-owner-access.guard';
 import { SpaceInviteCodesController } from './interface/http/space-invite-codes.controller';
 import { SpaceMembersController } from './interface/http/space-members.controller';
 import { SpaceTgChatController } from './interface/http/space-tg-chat.controller';
@@ -69,6 +71,9 @@ import { USER_QUERY, UsersModule } from 'users';
 
 		GetSpaceTgChatsUseCase,
 
+		SpaceOwnerAccessGuard,
+		SpaceMemberAccessGuard,
+
 		{ provide: SPACE_REPOSITORY, useClass: PrismaSpaceRepository },
 		{ provide: SPACE_MEMBER_REPOSITORY, useClass: PrismaSpaceMemberRepository },
 		{ provide: SPACE_INVITE_CODE_REPOSITORY, useClass: PrismaSpaceInviteCodesRepository },
@@ -79,6 +84,11 @@ import { USER_QUERY, UsersModule } from 'users';
 		{ provide: SPACE_TG_CHAT_REPOSITORY, useClass: PrismaSpaceTgChatRepository },
 		{ provide: USER_QUERY, useClass: PrismaUserQuery },
 	],
-	exports: [],
+	exports: [
+		SpaceOwnerAccessGuard,
+		SpaceMemberAccessGuard,
+		SPACE_REPOSITORY,
+		SPACE_MEMBER_REPOSITORY,
+	],
 })
 export class SpacesModule {}

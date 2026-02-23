@@ -1,6 +1,7 @@
 import { GetSpaceMembersUseCase } from '@spaces/application/use-cases/space-member/get-space-members.use-case';
 import { LeaveSpaceUseCase } from '@spaces/application/use-cases/space-member/leave-space.use-case';
 
+import { SpaceMemberAccessGuard } from '../guard/space-member-access.guard';
 import { SpaceMemberResponseDto } from './dto/space-member/space-member-response.dto';
 
 import { Controller, Delete, Get, Param, Request, UseGuards } from '@nestjs/common';
@@ -17,12 +18,14 @@ export class SpaceMembersController {
 		private readonly getSpaceMembersUseCase: GetSpaceMembersUseCase,
 	) {}
 
+	@UseGuards(SpaceMemberAccessGuard)
 	@Delete('leave/:spaceId')
 	async leave(@Param('spaceId') spaceId: string, @Request() req: AuthenticatedRequest) {
 		const { user } = req;
 		await this.leaveSpaceUseCase.execute({ spaceId, userId: user.id });
 	}
 
+	@UseGuards(SpaceMemberAccessGuard)
 	@Get(':spaceId')
 	async getList(@Param('spaceId') spaceId: string) {
 		const members = await this.getSpaceMembersUseCase.execute({ spaceId });
