@@ -11,16 +11,7 @@ import { CreateSpaceInviteCodeDto } from './dto/space-invite-code/create-space-i
 import { GetInfoSpaceInviteCodeDto } from './dto/space-invite-code/get-info-space-invite-code.dto';
 import { toSpaceInviteCodeResponse } from './dto/space-invite-code/space-invite-code-response.mapper';
 
-import {
-	Body,
-	Controller,
-	Delete,
-	Get,
-	Param,
-	Post,
-	Request,
-	UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Request, UseGuards } from '@nestjs/common';
 import { AuthenticatedRequest } from 'common/types/authenticated-request.interface';
 import { formatResponse } from 'common/utils/response.util';
 import { JwtAuthGuard } from 'users';
