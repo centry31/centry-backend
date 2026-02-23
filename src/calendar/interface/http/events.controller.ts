@@ -23,6 +23,7 @@ import {
 } from '@nestjs/common';
 import { AuthenticatedRequest } from 'common/types/authenticated-request.interface';
 import { formatResponse } from 'common/utils/response.util';
+import { SpaceMemberAccessGuard, SpaceOwnerAccessGuard } from 'spaces';
 import { JwtAuthGuard } from 'users';
 
 /**
@@ -43,11 +44,11 @@ export class EventsController {
 	/**
 	 * Возвращает материализованные инстансы событий в заданном диапазоне дат.
 	 */
-	@Get()
-	async get(@Query() query: GetEventsQueryDto, @Request() req: AuthenticatedRequest) {
-		const { currentSpaceId } = req;
+	@UseGuards(SpaceMemberAccessGuard)
+	@Get(':spaceId')
+	async get(@Query() query: GetEventsQueryDto, @Param('spaceId') spaceId: string) {
 		const events = await this.getSpaceEventsUseCase.execute({
-			spaceId: currentSpaceId,
+			spaceId,
 			from: query.from,
 			to: query.to,
 		});
@@ -58,9 +59,14 @@ export class EventsController {
 	/**
 	 * Создает одноразовое событие или повторяющуюся серию.
 	 */
-	@Post()
-	async create(@Body() createEventDto: CreateEventDto, @Request() req: AuthenticatedRequest) {
-		const { user, currentSpaceId } = req;
+	@UseGuards(SpaceOwnerAccessGuard)
+	@Post(':spaceId')
+	async create(
+		@Body() createEventDto: CreateEventDto,
+		@Request() req: AuthenticatedRequest,
+		@Param('spaceId') spaceId: string,
+	) {
+		const { user } = req;
 		const event = await this.createEventUseCase.execute({
 			title: createEventDto.title,
 			description: createEventDto.description ?? null,
@@ -69,7 +75,7 @@ export class EventsController {
 			timeZone: createEventDto.timeZone,
 			recurrence: createEventDto.recurrence,
 			createdById: user.id,
-			spaceId: currentSpaceId,
+			spaceId,
 			reminders: createEventDto.reminders ?? [],
 			isNotifyMessage: createEventDto.isNotifyMessage,
 			notifyMessage: createEventDto.notifyMessage,
@@ -81,16 +87,16 @@ export class EventsController {
 	/**
 	 * Обновляет событие согласно запрошенному scope.
 	 */
-	@Patch(':eventId')
+	@UseGuards(SpaceOwnerAccessGuard)
+	@Patch(':spaceId/:eventId')
 	async update(
+		@Param('spaceId') spaceId: string,
 		@Param('eventId') eventId: string,
 		@Body() updateEventDto: UpdateEventDto,
-		@Request() req: AuthenticatedRequest,
 	) {
-		const { currentSpaceId } = req;
 		await this.updateEventUseCase.execute({
 			eventId,
-			spaceId: currentSpaceId,
+			spaceId,
 			title: updateEventDto.title,
 			description: updateEventDto.description,
 			start: updateEventDto.start,
@@ -107,16 +113,16 @@ export class EventsController {
 	/**
 	 * Удаляет либо всю серию/событие, либо один инстанс в зависимости от scope.
 	 */
-	@Delete(':eventId')
+	@UseGuards(SpaceOwnerAccessGuard)
+	@Delete(':spaceId/:eventId')
 	async delete(
+		@Param('spaceId') spaceId: string,
 		@Param('eventId') eventId: string,
 		@Query() query: DeleteEventQueryDto,
-		@Request() req: AuthenticatedRequest,
 	) {
-		const { currentSpaceId } = req;
 		await this.deleteEventUseCase.execute({
 			eventId,
-			spaceId: currentSpaceId,
+			spaceId,
 			scope: query.scope,
 			occurrenceStart: query.occurrenceStart,
 		});

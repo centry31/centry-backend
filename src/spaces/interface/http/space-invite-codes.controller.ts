@@ -4,13 +4,23 @@ import { DeleteSpaceInviteCodeUseCase } from '@spaces/application/use-cases/spac
 import { GetActiveSpaceInviteCodesUseCase } from '@spaces/application/use-cases/space-invite-code/get-active-space-invite-codes.use-case';
 import { GetInfoSpaceInviteCodeUseCase } from '@spaces/application/use-cases/space-invite-code/get-info-space-invite-code.use-case';
 
+import { SpaceOwnerAccessGuard } from '../guard/space-owner-access.guard';
 import { toSpaceResponse } from './dto/space/space-response.mapper';
 import { AcceptSpaceInviteCodeDto } from './dto/space-invite-code/accept-space-invite-code.dto';
 import { CreateSpaceInviteCodeDto } from './dto/space-invite-code/create-space-invite-code.dto';
 import { GetInfoSpaceInviteCodeDto } from './dto/space-invite-code/get-info-space-invite-code.dto';
 import { toSpaceInviteCodeResponse } from './dto/space-invite-code/space-invite-code-response.mapper';
 
-import { Body, Controller, Delete, Get, Param, Post, Request, UseGuards } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Delete,
+	Get,
+	Param,
+	Post,
+	Request,
+	UseGuards,
+} from '@nestjs/common';
 import { AuthenticatedRequest } from 'common/types/authenticated-request.interface';
 import { formatResponse } from 'common/utils/response.util';
 import { JwtAuthGuard } from 'users';
@@ -39,14 +49,16 @@ export class SpaceInviteCodesController {
 		return formatResponse(null, 'Приглашение успешно принято');
 	}
 
-	@Post('create')
+	@UseGuards(SpaceOwnerAccessGuard)
+	@Post(':spaceId/create')
 	async create(
 		@Body() createSpaceInviteCodeDto: CreateSpaceInviteCodeDto,
 		@Request() req: AuthenticatedRequest,
+		@Param('spaceId') spaceId: string,
 	) {
 		const { user } = req;
 		const code = await this.createSpaceInviteCodeUseCase.execute({
-			spaceId: createSpaceInviteCodeDto.spaceId,
+			spaceId,
 			createdByUserId: user.id,
 			expiresAt: createSpaceInviteCodeDto.expiresAt,
 			maxUses: createSpaceInviteCodeDto.maxUses,
@@ -64,6 +76,7 @@ export class SpaceInviteCodesController {
 		return formatResponse(response, 'Информация о пространстве по коду получена');
 	}
 
+	@UseGuards(SpaceOwnerAccessGuard)
 	@Get(':spaceId')
 	async getManyActive(@Param('spaceId') spaceId: string) {
 		const codes = await this.getActiveSpaceInviteCodesUseCase.execute({ spaceId });
@@ -71,6 +84,7 @@ export class SpaceInviteCodesController {
 		return formatResponse(response, 'Активные коды успешно получены');
 	}
 
+	@UseGuards(SpaceOwnerAccessGuard)
 	@Delete(':spaceId/delete/:code')
 	async delete(@Param('spaceId') spaceId: string, @Param('code') code: string) {
 		await this.deleteSpaceInviteCodeUseCase.execute({ spaceId, code });

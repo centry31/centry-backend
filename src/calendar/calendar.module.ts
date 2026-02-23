@@ -25,7 +25,7 @@ import { ReminderPlanningService } from './application/services/reminder-plannin
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { SPACE_TG_CHAT_QUERY } from 'spaces';
+import { SPACE_TG_CHAT_QUERY, SpacesModule } from 'spaces';
 import { UsersModule } from 'users';
 
 /**
@@ -52,7 +52,12 @@ import { UsersModule } from 'users';
 		{ provide: REMINDER_SCHEDULER, useClass: BullReminderScheduler },
 		{ provide: TG_NOTIFIER, useClass: HttpTgNotifier },
 	],
-	imports: [UsersModule, ConfigModule, BullModule.registerQueue({ name: REMINDER_QUEUE_NAME })],
+	imports: [
+		UsersModule,
+		SpacesModule,
+		ConfigModule,
+		BullModule.registerQueue({ name: REMINDER_QUEUE_NAME }),
+	],
 	exports: [],
 })
 export class CalendarModule {}
