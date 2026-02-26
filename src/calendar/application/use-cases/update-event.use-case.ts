@@ -94,7 +94,7 @@ export class UpdateEventUseCase {
 
 			await this.ensureReminderTargetsIfNeeded(cmd.spaceId, cmd.reminders);
 			this.recurrenceService.validateTimeZone(cmd.timeZone);
-			this.ensureRecurrenceUntilValid(cmd.recurrence, cmd.start);
+			this.ensureRecurrenceUntilValid(cmd.recurrence, cmd.start, cmd.duration);
 
 			if (cmd.scope === 'SERIES' || !event.isRecurring()) {
 				await this.applySeriesUpdate(event, cmd);
@@ -418,18 +418,23 @@ export class UpdateEventUseCase {
 	}
 
 	/**
-	 * Проверяет, что `recurrence.until` не раньше `start` для повторяющихся событий.
+	 * Проверяет, что `recurrence.until` не раньше конца события для повторяющихся событий.
 	 */
-	private ensureRecurrenceUntilValid(recurrence: RecurrenceConfig, start: Date): void {
+	private ensureRecurrenceUntilValid(
+		recurrence: RecurrenceConfig,
+		start: Date,
+		duration: number,
+	): void {
 		const isRecurring = recurrence.type !== 'NONE';
+		const eventEnd = new Date(start.getTime() + duration * 60_000);
 		const hasInvalidUntil =
 			isRecurring &&
 			recurrence.until instanceof Date &&
 			!Number.isNaN(recurrence.until.getTime()) &&
-			recurrence.until.getTime() < start.getTime();
+			recurrence.until.getTime() < eventEnd.getTime();
 		if (hasInvalidUntil) {
 			throw new HttpException(
-				'recurrence.until должен быть не раньше start',
+				'recurrence.until должен быть не раньше конца события',
 				HttpStatus.BAD_REQUEST,
 			);
 		}
