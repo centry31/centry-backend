@@ -107,7 +107,13 @@ export class CreateEventUseCase {
 			}
 
 			const startVo = DateTime.fromDate(cmd.start);
+			const untilVo = DateTime.fromDate(cmd.until);
 			const createdAtVo = DateTime.now();
+
+			if (untilVo.isBefore(startVo)) {
+				throw new BadRequestException('Конец повторения должен быть позже конца события');
+			}
+
 			const event = new Event({
 				id: crypto.randomUUID(),
 				spaceId: cmd.spaceId,
