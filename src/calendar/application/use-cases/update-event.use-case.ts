@@ -8,10 +8,18 @@ import {
 	EVENT_REPOSITORY,
 	EventRepository,
 } from 'calendar/application/ports/event/event.repository';
+import {
+	REMINDER_PLANNING,
+	ReminderPlanning,
+} from 'calendar/application/ports/reminder-planning/reminder-planning.port';
 
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+	getSourceRuleOrThrow,
+	parseRruleSetOrThrow,
+} from 'calendar/application/services/rrule/parse-rrule.helper';
 import { runUseCase } from 'common/application/errors/run-use-case';
-import { Frequency, RRule, RRuleSet, rrulestr } from 'rrule';
+import { Frequency, RRule, RRuleSet } from 'rrule';
 import { SPACE_TG_CHAT_QUERY, SpaceTgChatQuery } from 'spaces';
 
 type Reminder = { offsetMinutes: number };
@@ -45,6 +53,9 @@ export class UpdateEventUseCase {
 
 		@Inject(SPACE_TG_CHAT_QUERY)
 		private readonly spaceTgChatQuery: SpaceTgChatQuery,
+
+		@Inject(REMINDER_PLANNING)
+		private readonly reminderPlanning: ReminderPlanning,
 	) {}
 
 	private mapFrequencyToRrule = (frequency: EventFrequency) => {
@@ -76,11 +87,7 @@ export class UpdateEventUseCase {
 				return this.updateOne(event, cmd);
 			}
 
-			const parsedRrule = rrulestr(event.rrule, { forceset: true });
-			if (!(parsedRrule instanceof RRuleSet)) {
-				throw new BadRequestException('Некорректное правило повторения');
-			}
-			const rruleSet = parsedRrule;
+			const rruleSet = parseRruleSetOrThrow(event.rrule);
 
 			if (cmd.scope === 'THIS') {
 				return this.updateThis(event, cmd, rruleSet);
@@ -98,6 +105,7 @@ export class UpdateEventUseCase {
 		event.changeTitle(cmd.title);
 		event.changeDescription(cmd.description);
 		event.changeTimeRange(newStartVo, cmd.duration);
+		event.clearReminders();
 
 		cmd.reminders.forEach((reminder) => {
 			const eventReminder = new EventReminder({
@@ -127,6 +135,7 @@ export class UpdateEventUseCase {
 		}
 
 		await this.eventRepository.update(event);
+		await this.reminderPlanning.replanEvent(event.id);
 	}
 
 	private async updateThis(event: Event, cmd: Cmd, rruleSet: RRuleSet) {
@@ -180,6 +189,8 @@ export class UpdateEventUseCase {
 
 		await this.eventRepository.create(newEvent);
 		await this.eventRepository.update(event);
+		await this.reminderPlanning.replanEvent(event.id);
+		await this.reminderPlanning.replanEvent(newEvent.id);
 	}
 
 	private async updateThisAndFuture(event: Event, cmd: Cmd, rruleSet: RRuleSet) {
@@ -227,10 +238,7 @@ export class UpdateEventUseCase {
 			newEvent.changeRrule(newRruleSetString);
 		}
 
-		const sourceRule = rruleSet.rrules()[0];
-		if (!sourceRule) {
-			throw new BadRequestException('Некорректное правило повторения');
-		}
+		const sourceRule = getSourceRuleOrThrow(rruleSet);
 
 		const previousOccurrence = rruleSet.before(cmd.oldStart, false);
 		const updatedExDates = rruleSet.exdates().filter((exDate) => {
@@ -241,6 +249,7 @@ export class UpdateEventUseCase {
 		if (!previousOccurrence) {
 			await this.eventRepository.create(newEvent);
 			await this.eventRepository.delete(event.id, cmd.spaceId);
+			await this.reminderPlanning.replanEvent(newEvent.id);
 			return;
 		}
 
@@ -261,5 +270,7 @@ export class UpdateEventUseCase {
 
 		await this.eventRepository.create(newEvent);
 		await this.eventRepository.update(event);
+		await this.reminderPlanning.replanEvent(event.id);
+		await this.reminderPlanning.replanEvent(newEvent.id);
 	}
 }

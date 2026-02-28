@@ -38,23 +38,22 @@ export class ImportBmstuScheduleUseCase {
 				timeZone: cmd.timeZone,
 			});
 
-			// await Promise.all(
-			// 	importedEvents.map((event) =>
-			// 		this.createEventUseCase.execute({
-			// 			title: event.title,
-			// 			description: event.description,
-			// 			start: event.start,
-			// 			duration: event.duration,
-			// 			timeZone: event.timeZone,
-			// 			recurrence: event.recurrence,
-			// 			createdById: cmd.createdById,
-			// 			spaceId: cmd.spaceId,
-			// 			reminders: [],
-			// 			isNotifyMessage: false,
-			// 			notifyMessage: '',
-			// 		}),
-			// 	),
-			// );
+			await Promise.all(
+				importedEvents.map((event) =>
+					this.createEventUseCase.execute({
+						title: event.title,
+						description: event.description,
+						start: event.start,
+						duration: event.duration,
+						timeZone: event.timeZone,
+						frequency: event.frequency,
+						until: event.until,
+						createdById: cmd.createdById,
+						spaceId: cmd.spaceId,
+						reminders: [],
+					}),
+				),
+			);
 
 			return { importedCount: importedEvents.length };
 		});

@@ -3,13 +3,18 @@ import {
 	EventRepository,
 } from 'calendar/application/ports/event/event.repository';
 import {
+	REMINDER_PLANNING,
+	ReminderPlanning,
+} from 'calendar/application/ports/reminder-planning/reminder-planning.port';
+import {
 	REMINDER_SCHEDULER,
 	ReminderScheduler,
 } from 'calendar/application/ports/reminder-scheduler/reminder-scheduler.port';
 
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { parseRruleWithSourceOrThrow } from 'calendar/application/services/rrule/parse-rrule.helper';
 import { runUseCase } from 'common/application/errors/run-use-case';
-import { RRuleSet, rrulestr } from 'rrule';
+import { RRuleSet } from 'rrule';
 
 type Cmd = {
 	spaceId: string;
@@ -26,6 +31,9 @@ export class DeleteEventUseCase {
 
 		@Inject(REMINDER_SCHEDULER)
 		private readonly reminderScheduler: ReminderScheduler,
+
+		@Inject(REMINDER_PLANNING)
+		private readonly reminderPlanning: ReminderPlanning,
 	) {}
 
 	async execute(cmd: Cmd): Promise<void> {
@@ -36,24 +44,31 @@ export class DeleteEventUseCase {
 			}
 
 			if (cmd.scope === 'SERIES' || !event.rrule) {
+				await this.reminderScheduler.unscheduleMany(event.reminders.map((r) => r.id));
 				return await this.eventRepository.delete(event.id, event.spaceId);
 			}
 
 			if (cmd.scope === 'THIS') {
-				const parsedRrule = rrulestr(event.rrule, { forceset: true });
+				const { rruleSet: parsedRrule, sourceRule } = parseRruleWithSourceOrThrow(
+					event.rrule,
+				);
 
-				if (!(parsedRrule instanceof RRuleSet)) {
-					throw new BadRequestException('Некорректное правило повторения');
+				const nextMillisecond = new Date(cmd.start.getTime() + 1);
+				const isOccurrenceInSeries =
+					parsedRrule.between(cmd.start, nextMillisecond, true).length > 0;
+				if (!isOccurrenceInSeries) {
+					throw new BadRequestException('start не входит в серию');
 				}
-				const sourceRule = parsedRrule.rrules()[0];
 
 				const newRruleSet = new RRuleSet();
 				newRruleSet.rrule(sourceRule);
+				parsedRrule.exdates().forEach((exDate) => newRruleSet.exdate(exDate));
 				newRruleSet.exdate(cmd.start);
 				const newRruleString = newRruleSet.toString();
 
 				event.changeRrule(newRruleString);
 				await this.eventRepository.update(event);
+				await this.reminderPlanning.replanEvent(event.id);
 			}
 		});
 	}

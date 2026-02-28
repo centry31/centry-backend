@@ -5,6 +5,7 @@ import { ImportBmstuScheduleUseCase } from './application/use-cases/import-bmstu
 import { UpdateEventUseCase } from './application/use-cases/update-event.use-case';
 
 import { EVENT_REPOSITORY } from './application/ports/event/event.repository';
+import { REMINDER_PLANNING } from './application/ports/reminder-planning/reminder-planning.port';
 import { REMINDER_SCHEDULER } from './application/ports/reminder-scheduler/reminder-scheduler.port';
 import { TG_NOTIFIER } from './application/ports/tg-notifier/tg-notifier.port';
 
@@ -16,6 +17,8 @@ import { REMINDER_QUEUE_NAME } from './infrastructure/queue/reminder-queue.const
 import { HttpTgNotifier } from './infrastructure/telegram/http-tg-notifier';
 
 import { EventsController } from './interface/http/events.controller';
+
+import { ReminderPlanningService } from './application/services/reminder-planning/reminder-planning.service';
 
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
@@ -39,9 +42,11 @@ import { UsersModule } from 'users';
 		UpdateEventUseCase,
 		ImportBmstuScheduleUseCase,
 		ReminderProcessor,
+		ReminderPlanningService,
 
 		{ provide: EVENT_REPOSITORY, useClass: PrismaEventRepository },
 		{ provide: SPACE_TG_CHAT_QUERY, useClass: PrismaSpaceTgChatQuery },
+		{ provide: REMINDER_PLANNING, useExisting: ReminderPlanningService },
 		{ provide: REMINDER_SCHEDULER, useClass: BullReminderScheduler },
 		{ provide: TG_NOTIFIER, useClass: HttpTgNotifier },
 	],

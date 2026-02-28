@@ -9,9 +9,9 @@ import {
 	EventRepository,
 } from 'calendar/application/ports/event/event.repository';
 import {
-	REMINDER_SCHEDULER,
-	ReminderScheduler,
-} from 'calendar/application/ports/reminder-scheduler/reminder-scheduler.port';
+	REMINDER_PLANNING,
+	ReminderPlanning,
+} from 'calendar/application/ports/reminder-planning/reminder-planning.port';
 import { TG_NOTIFIER, TgNotifier } from 'calendar/application/ports/tg-notifier/tg-notifier.port';
 
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
@@ -50,8 +50,8 @@ export class CreateEventUseCase {
 		@Inject(SPACE_TG_CHAT_QUERY)
 		private readonly spaceTgChatQuery: SpaceTgChatQuery,
 
-		@Inject(REMINDER_SCHEDULER)
-		private readonly reminderScheduler: ReminderScheduler,
+		@Inject(REMINDER_PLANNING)
+		private readonly reminderPlanning: ReminderPlanning,
 
 		@Inject(TG_NOTIFIER)
 		private readonly tgNotifier: TgNotifier,
@@ -150,7 +150,21 @@ export class CreateEventUseCase {
 				event.changeRrule(rruleSetString);
 			}
 
-			return await this.eventRepository.create(event);
+			const createdEvent = await this.eventRepository.create(event);
+			await this.reminderPlanning.replanEvent(createdEvent.id);
+
+			if (cmd.isNotifyMessage) {
+				const tgRequests = spaceTgChats.map((spaceTgChat) =>
+					this.tgNotifier.send({
+						chatId: spaceTgChat.chatId,
+						messageThreadId: spaceTgChat.messageThreadId,
+						text: this.buildNotifyMessage(createdEvent, cmd.notifyMessage),
+					}),
+				);
+				await Promise.all(tgRequests);
+			}
+
+			return createdEvent;
 		});
 	}
 }

@@ -4,20 +4,21 @@ import {
 	EVENT_REPOSITORY,
 	EventRepository,
 } from 'calendar/application/ports/event/event.repository';
-import type { ReminderJobData } from 'calendar/application/ports/reminder-scheduler/reminder-scheduler.port';
 import {
-	REMINDER_SCHEDULER,
-	ReminderScheduler,
-} from 'calendar/application/ports/reminder-scheduler/reminder-scheduler.port';
+	REMINDER_PLANNING,
+	ReminderPlanning,
+} from 'calendar/application/ports/reminder-planning/reminder-planning.port';
+import type { ReminderJobData } from 'calendar/application/ports/reminder-scheduler/reminder-scheduler.port';
 import { TG_NOTIFIER, TgNotifier } from 'calendar/application/ports/tg-notifier/tg-notifier.port';
 
 import { REMINDER_QUEUE_NAME } from './reminder-queue.constants';
 
-import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger } from '@nestjs/common';
-import type { Job } from 'bullmq';
-import { rrulestr } from 'rrule';
+import { Job } from 'bullmq';
 import { SPACE_TG_CHAT_QUERY, SpaceTgChatQuery } from 'spaces';
+
+type ReminderProcessResult = { replanEventId: string | null };
 
 /**
  * Процессор BullMQ, который отправляет reminders и перепланирует следующий инстанс.
@@ -36,13 +37,13 @@ export class ReminderProcessor extends WorkerHost {
 		@Inject(SPACE_TG_CHAT_QUERY)
 		private readonly spaceTgChatQuery: SpaceTgChatQuery,
 
-		@Inject(REMINDER_SCHEDULER)
-		private reminderScheduler: ReminderScheduler,
+		@Inject(REMINDER_PLANNING)
+		private readonly reminderPlanning: ReminderPlanning,
 	) {
 		super();
 	}
 
-	async process(job: Job<ReminderJobData>): Promise<void> {
+	async process(job: Job<ReminderJobData>): Promise<ReminderProcessResult> {
 		const data = job.data;
 
 		const event = await this.eventRepository.findById(data.eventId);
@@ -50,7 +51,7 @@ export class ReminderProcessor extends WorkerHost {
 			this.logger.warn(
 				`Событие не найдено, reminderId=${data.reminderId}, eventId=${data.eventId}`,
 			);
-			return;
+			return { replanEventId: null };
 		}
 
 		const reminder = event.reminders.find((r) => r.id === data.reminderId);
@@ -58,7 +59,7 @@ export class ReminderProcessor extends WorkerHost {
 			this.logger.warn(
 				`Напоминание не найдено у события, reminderId=${data.reminderId}, eventId=${data.eventId}`,
 			);
-			return;
+			return { replanEventId: null };
 		}
 
 		const spaceTgChats = await this.spaceTgChatQuery.getActiveTargetsBySpaceId(event.spaceId);
@@ -66,7 +67,7 @@ export class ReminderProcessor extends WorkerHost {
 			this.logger.warn(
 				`Напоминание некуда отправить, reminderId=${data.reminderId}, eventId=${data.eventId}`,
 			);
-			return;
+			return { replanEventId: null };
 		}
 
 		const message = this.buildReminderText(event.title, event.start, reminder.offsetMinutes);
@@ -80,14 +81,23 @@ export class ReminderProcessor extends WorkerHost {
 		);
 		await Promise.all(chatRequests);
 		await this.eventRepository.markReminderSent(reminder.id);
+		return { replanEventId: event.id };
+	}
 
-		if (!event.rrule) return;
+	@OnWorkerEvent('completed')
+	async onCompleted(_: Job<ReminderJobData>, result: ReminderProcessResult): Promise<void> {
+		if (!result?.replanEventId) {
+			return;
+		}
 
-		const parsedRrule = rrulestr(event.rrule, { forceset: true });
-		const nextReminderDate = parsedRrule.after(new Date());
-
-		if (!nextReminderDate) return;
-		// await this.reminderScheduler.
+		try {
+			await this.reminderPlanning.replanEvent(result.replanEventId);
+		} catch (error) {
+			this.logger.error(
+				`Ошибка перепланирования reminders, eventId=${result.replanEventId}`,
+				error instanceof Error ? error.stack : String(error),
+			);
+		}
 	}
 
 	private buildReminderText(

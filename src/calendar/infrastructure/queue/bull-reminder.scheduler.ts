@@ -55,14 +55,17 @@ export class BullReminderScheduler implements ReminderScheduler {
 		);
 	}
 	async scheduleMany(scheduleReminders: ScheduleReminder[]): Promise<void> {
-		scheduleReminders.forEach((reminder) => this.scheduleOne(reminder));
+		await Promise.all(
+			scheduleReminders.map((scheduleReminder) => this.scheduleOne(scheduleReminder)),
+		);
 	}
 
 	async unscheduleOne(reminderId: string): Promise<void> {
 		const job = await this.queue.getJob(reminderId);
-		job.remove();
+		if (!job) return;
+		await job.remove();
 	}
 	async unscheduleMany(reminderIds: string[]): Promise<void> {
-		reminderIds.forEach((reminderId) => this.unscheduleOne(reminderId));
+		await Promise.all(reminderIds.map((reminderId) => this.unscheduleOne(reminderId)));
 	}
 }

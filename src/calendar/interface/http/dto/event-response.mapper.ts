@@ -1,7 +1,7 @@
 import type { Event } from 'calendar/domain/event.entity';
 
-import { BadRequestException } from '@nestjs/common';
-import { Frequency, RRuleSet, rrulestr } from 'rrule';
+import { parseRruleWithSourceOrThrow } from 'calendar/application/services/rrule/parse-rrule.helper';
+import { Frequency } from 'rrule';
 
 const mapRruleFrequency = (frequency: Frequency, interval: number) => {
 	switch (frequency) {
@@ -47,13 +47,7 @@ export const toEventResponse = (event: Event): EventResponse => {
 	let until: Date | null = null;
 
 	if (event.rrule) {
-		// TODO: вытащить это в хелпер
-		const parsedRrule = rrulestr(event.rrule, { forceset: true });
-		if (!(parsedRrule instanceof RRuleSet)) {
-			throw new BadRequestException('Некорректное правило повторения');
-		}
-
-		const sourceRule = parsedRrule.rrules()[0];
+		const { sourceRule } = parseRruleWithSourceOrThrow(event.rrule);
 
 		frequency = mapRruleFrequency(sourceRule.options.freq, sourceRule.options.interval);
 		until = sourceRule.options.until;

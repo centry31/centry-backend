@@ -3,18 +3,7 @@ import { ENV } from 'common/infrastructure/env';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import axios from 'axios';
 
-/**
- * Поддерживаемые внешние типы повторений в расписании МГТУ.
- */
-type BmstuExternalRecurrenceType = 'NONE' | 'DAILY' | 'WEEKLY' | 'DOUBLE_WEEKLY' | 'MONTHLY';
-
-/**
- * Нормализованная внешняя модель повторения события МГТУ.
- */
-type BmstuExternalRecurrence = {
-	type: BmstuExternalRecurrenceType;
-	until?: Date;
-};
+type BmstuExternalEventFrequency = 'NEVER' | 'DAILY' | 'WEEKLY' | 'DOUBLE_WEEKLY' | 'MONTHLY';
 
 type BmstuGroupScheduleResponse = {
 	data?: {
@@ -87,7 +76,8 @@ type BmstuExternalScheduleEvent = {
 	start: Date;
 	duration: number;
 	timeZone: string;
-	recurrence: BmstuExternalRecurrence;
+	frequency: BmstuExternalEventFrequency;
+	until?: Date;
 };
 
 /**
@@ -231,7 +221,7 @@ export class ImportBmstuScheduleService {
 			seconds: 59,
 		});
 
-		const recurrence = this.buildRecurrence(week, until);
+		const frequency = this.buildFrequency(week);
 		const sourceDescription = this.resolveActTypeLabel(entry.discipline?.actType);
 		const location = this.resolveLocation(entry.audiences);
 		const lecturer = this.resolveLecturer(entry.teachers);
@@ -250,22 +240,17 @@ export class ImportBmstuScheduleService {
 			start,
 			duration,
 			timeZone,
-			recurrence,
+			frequency,
+			until,
 		};
 	}
 
-	private buildRecurrence(week: WeekTag, until: Date): BmstuExternalRecurrence {
+	private buildFrequency(week: WeekTag): BmstuExternalEventFrequency {
 		if (week === 'all') {
-			return {
-				type: 'WEEKLY',
-				until,
-			};
+			return 'WEEKLY';
 		}
 
-		return {
-			type: 'DOUBLE_WEEKLY',
-			until,
-		};
+		return 'DOUBLE_WEEKLY';
 	}
 
 	private buildExternalId(

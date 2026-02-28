@@ -7,8 +7,8 @@ import {
 } from 'calendar/application/ports/event/event.repository';
 
 import { Inject, Injectable } from '@nestjs/common';
+import { parseRruleSetOrThrow } from 'calendar/application/services/rrule/parse-rrule.helper';
 import { runUseCase } from 'common/application/errors/run-use-case';
-import { rrulestr } from 'rrule';
 
 type Cmd = {
 	spaceId: string;
@@ -29,13 +29,19 @@ export class GetSpaceEventsUseCase {
 			const materializedEvents: Event[] = [];
 
 			for (const calendarEvent of calendarEvents) {
-				// TODO: эти без выборки по датам отдаются
 				if (!calendarEvent.rrule) {
-					materializedEvents.push(calendarEvent);
+					const from = DateTime.fromDate(cmd.from);
+					const to = DateTime.fromDate(cmd.to);
+					const start = calendarEvent.start;
+
+					if (from.isSameOrBefore(start) && to.isAfter(start)) {
+						materializedEvents.push(calendarEvent);
+					}
+
 					continue;
 				}
 
-				const rruleSet = rrulestr(calendarEvent.rrule, { forceset: true });
+				const rruleSet = parseRruleSetOrThrow(calendarEvent.rrule);
 				const rruleDates = rruleSet.between(cmd.from, cmd.to);
 
 				for (const date of rruleDates) {
