@@ -27,11 +27,6 @@ import { formatResponse } from 'common/utils/response.util';
 import { SpaceMemberAccessGuard, SpaceOwnerAccessGuard } from 'spaces';
 import { JwtAuthGuard } from 'users';
 
-/**
- * HTTP-контроллер событий календаря.
- *
- * Все операции выполняются в контексте текущего авторизованного space.
- */
 @UseGuards(JwtAuthGuard)
 @Controller('events')
 export class EventsController {
@@ -43,9 +38,6 @@ export class EventsController {
 		private readonly importBmstuScheduleUseCase: ImportBmstuScheduleUseCase,
 	) {}
 
-	/**
-	 * Импортирует расписание Bmstu по `groupId` и сохраняет его в указанное пространство.
-	 */
 	@UseGuards(SpaceOwnerAccessGuard)
 	@Post(':spaceId/bmstu-import/:groupId')
 	async importBmstuByGroup(
@@ -66,9 +58,6 @@ export class EventsController {
 		return formatResponse(result, `Импортировано событий: ${result.importedCount}`);
 	}
 
-	/**
-	 * Возвращает материализованные инстансы событий в заданном диапазоне дат.
-	 */
 	@UseGuards(SpaceMemberAccessGuard)
 	@Get(':spaceId')
 	async get(@Query() query: GetEventsQueryDto, @Param('spaceId') spaceId: string) {
@@ -81,9 +70,6 @@ export class EventsController {
 		return formatResponse(response, 'События получены');
 	}
 
-	/**
-	 * Создает одноразовое событие или повторяющуюся серию.
-	 */
 	@UseGuards(SpaceOwnerAccessGuard)
 	@Post(':spaceId')
 	async create(
@@ -98,8 +84,9 @@ export class EventsController {
 			start: createEventDto.start,
 			duration: createEventDto.duration,
 			timeZone: createEventDto.timeZone,
-			recurrence: createEventDto.recurrence,
 			createdById: user.id,
+			frequency: createEventDto.frequency,
+			until: createEventDto.until,
 			spaceId,
 			reminders: createEventDto.reminders ?? [],
 			isNotifyMessage: createEventDto.isNotifyMessage,
@@ -109,9 +96,6 @@ export class EventsController {
 		return formatResponse(response, 'Событие создано');
 	}
 
-	/**
-	 * Обновляет событие согласно запрошенному scope.
-	 */
 	@UseGuards(SpaceOwnerAccessGuard)
 	@Patch(':spaceId/:eventId')
 	async update(
@@ -120,24 +104,22 @@ export class EventsController {
 		@Body() updateEventDto: UpdateEventDto,
 	) {
 		await this.updateEventUseCase.execute({
-			eventId,
+			id: eventId,
 			spaceId,
 			title: updateEventDto.title,
 			description: updateEventDto.description,
-			start: updateEventDto.start,
+			newStart: updateEventDto.newStart,
+			oldStart: updateEventDto.oldStart,
 			duration: updateEventDto.duration,
 			timeZone: updateEventDto.timeZone,
-			recurrence: updateEventDto.recurrence,
+			frequency: updateEventDto.frequency,
+			until: updateEventDto.until,
 			reminders: updateEventDto.reminders ?? [],
 			scope: updateEventDto.scope,
-			occurrenceStart: updateEventDto.occurrenceStart,
 		});
 		return formatResponse(null, 'Событие обновлено');
 	}
 
-	/**
-	 * Удаляет либо всю серию/событие, либо один инстанс в зависимости от scope.
-	 */
 	@UseGuards(SpaceOwnerAccessGuard)
 	@Delete(':spaceId/:eventId')
 	async delete(
@@ -149,7 +131,7 @@ export class EventsController {
 			eventId,
 			spaceId,
 			scope: query.scope,
-			occurrenceStart: query.occurrenceStart,
+			start: query.start,
 		});
 		return formatResponse(null, 'Событие удалено');
 	}

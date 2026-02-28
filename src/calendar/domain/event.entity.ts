@@ -3,15 +3,7 @@ import type { DateTime } from 'common/domain/value-objects/date-time.vo';
 
 import type { EventReminder } from './event-reminder.entity';
 
-/**
- * Данные конструктора доменной сущности {@link Event}.
- *
- * Одна и та же сущность используется для:
- * - обычного одноразового события (`rrule` не задан);
- * - корня повторяющейся серии (`rrule` задан);
- * - `detached`-переопределения одного инстанса (`detachedFrom*` заданы).
- */
-type EventProps = {
+type Props = {
 	id: string;
 	title: string;
 	description?: string;
@@ -24,9 +16,6 @@ type EventProps = {
 	spaceId: string;
 	createdById: string;
 	createdAt: DateTime;
-
-	detachedFromEventId?: string;
-	detachedFromOccurrenceStart?: DateTime;
 
 	reminders?: EventReminder[];
 };
@@ -50,17 +39,15 @@ export class Event {
 	private _title: string;
 	private _description?: string;
 	private _start: DateTime;
+	private _duration: number;
 	private _rrule?: string;
 	private _timeZone: string;
-	private _duration: number;
 	private _reminders: EventReminder[];
-	private _detachedFromEventId?: string;
-	private _detachedFromOccurrenceStart?: DateTime;
 
 	/**
 	 * Создает агрегат события и валидирует инварианты.
 	 */
-	constructor(props: EventProps) {
+	constructor(props: Props) {
 		this.id = props.id;
 		this.spaceId = props.spaceId;
 		this.createdById = props.createdById;
@@ -73,14 +60,10 @@ export class Event {
 		this._timeZone = this.normalizeTimeZone(props.timeZone);
 		this._duration = props.duration;
 
-		this._detachedFromEventId = props.detachedFromEventId;
-		this._detachedFromOccurrenceStart = props.detachedFromOccurrenceStart;
-
 		this._reminders = props.reminders ? props.reminders.slice() : [];
 
 		this.ensureRemindersCoherent();
 		this.ensureDurationValid(this._duration);
-		this.ensureDetachedLinkCoherent();
 	}
 
 	/**
@@ -136,31 +119,10 @@ export class Event {
 	}
 
 	/**
-	 * Идентификатор исходной серии для `detached`-события.
-	 */
-	get detachedFromEventId(): string | undefined {
-		return this._detachedFromEventId;
-	}
-
-	/**
-	 * Якорь исходного инстанса для `detached`-события.
-	 */
-	get detachedFromOccurrenceStart(): DateTime | undefined {
-		return this._detachedFromOccurrenceStart;
-	}
-
-	/**
 	 * Возвращает `true`, если событие повторяющееся (есть `rrule`).
 	 */
 	isRecurring(): boolean {
 		return Boolean(this._rrule);
-	}
-
-	/**
-	 * Возвращает `true` для `detached`-переопределения одного инстанса.
-	 */
-	isDetached(): boolean {
-		return Boolean(this._detachedFromEventId);
 	}
 
 	private normalizeTitle(title: string): string {
@@ -196,17 +158,6 @@ export class Event {
 		}
 	}
 
-	private ensureDetachedLinkCoherent(): void {
-		const hasDetachedFromEventId = Boolean(this._detachedFromEventId);
-		const hasDetachedFromOccurrenceStart = Boolean(this._detachedFromOccurrenceStart);
-		const hasHalfDetachedLink = hasDetachedFromEventId !== hasDetachedFromOccurrenceStart;
-		if (hasHalfDetachedLink) {
-			throw new DomainValidationError(
-				'detachedFromEventId and detachedFromOccurrenceStart must be set together',
-			);
-		}
-	}
-
 	/**
 	 * Обновляет заголовок с валидацией.
 	 */
@@ -232,7 +183,7 @@ export class Event {
 	/**
 	 * Заменяет правило повторения. `undefined` означает одноразовое событие.
 	 */
-	changeRecurrence(rrule?: string): void {
+	changeRrule(rrule?: string): void {
 		this._rrule = rrule;
 	}
 
@@ -250,16 +201,6 @@ export class Event {
 		this.ensureDurationValid(duration);
 		this._start = start;
 		this._duration = duration;
-		this._reminders = this._reminders.map((reminder) => reminder.recalculateFor(start));
-	}
-
-	/**
-	 * Устанавливает или очищает `detached`-связку.
-	 */
-	setDetachedLink(detachedFromEventId?: string, detachedFromOccurrenceStart?: DateTime): void {
-		this._detachedFromEventId = detachedFromEventId;
-		this._detachedFromOccurrenceStart = detachedFromOccurrenceStart;
-		this.ensureDetachedLinkCoherent();
 	}
 
 	/**
@@ -268,16 +209,6 @@ export class Event {
 	addReminder(reminder: EventReminder): void {
 		reminder.ensureCoherentWith(this._start);
 		this._reminders.push(reminder);
-	}
-
-	/**
-	 * Полностью заменяет коллекцию reminders после проверок согласованности.
-	 */
-	replaceReminders(reminders: EventReminder[]): void {
-		for (const reminder of reminders) {
-			reminder.ensureCoherentWith(this._start);
-		}
-		this._reminders = reminders.slice();
 	}
 
 	/**

@@ -1,10 +1,10 @@
-import { RecurrenceDto } from './recurrence.dto';
-
 import { Type } from 'class-transformer';
 import {
 	ArrayMaxSize,
 	IsArray,
 	IsBoolean,
+	IsDate,
+	IsIn,
 	IsInt,
 	IsNotEmpty,
 	IsOptional,
@@ -15,19 +15,14 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-/**
- * DTO напоминания для маршрута создания.
- */
 class CreateEventReminderDto {
 	@IsInt()
 	@Min(0)
 	@Max(60 * 24 * 14)
 	offsetMinutes: number;
 }
+type Frequency = 'NEVER' | 'DAILY' | 'WEEKLY' | 'DOUBLE_WEEKLY' | 'MONTHLY';
 
-/**
- * DTO запроса на создание события.
- */
 export class CreateEventDto {
 	@IsString()
 	@IsNotEmpty()
@@ -49,13 +44,15 @@ export class CreateEventDto {
 
 	@IsString()
 	@IsNotEmpty()
-	// Обязательная локальная IANA-таймзона события.
 	timeZone: string;
 
-	@ValidateNested()
-	@Type(() => RecurrenceDto)
-	// Данные повторений обязательны всегда; для одноразового события используйте type=NONE.
-	recurrence: RecurrenceDto;
+	@IsIn(['NEVER', 'DAILY', 'WEEKLY', 'DOUBLE_WEEKLY', 'MONTHLY'])
+	frequency: Frequency;
+
+	@IsOptional()
+	@Type(() => Date)
+	@IsDate()
+	until?: Date;
 
 	@IsOptional()
 	@IsArray()
