@@ -1,5 +1,4 @@
 import { Event } from 'calendar/domain/event.entity';
-import { EventException } from 'calendar/domain/event-exception.entity';
 import { EventReminder } from 'calendar/domain/event-reminder.entity';
 import { DateTime } from 'common/domain/value-objects/date-time.vo';
 
@@ -18,8 +17,6 @@ type EventRow = {
 
 	spaceId: string;
 	createdById: string;
-	detachedFromEventId: string | null;
-	detachedFromOccurrenceStart: Date | null;
 
 	createdAt: Date;
 	updatedAt: Date;
@@ -39,16 +36,6 @@ type EventReminderRow = {
 
 	createdAt: Date;
 	updatedAt: Date;
-};
-
-/**
- * Проекция строки `eventException` из Prisma для адаптера репозитория.
- */
-type EventExceptionRow = {
-	id: string;
-	eventId: string;
-	occurrenceStart: Date;
-	createdAt: Date;
 };
 
 /**
@@ -88,10 +75,6 @@ export const toEventDomain = (row: EventRow, reminderRows: EventReminderRow[] = 
 
 		spaceId: row.spaceId,
 		createdById: row.createdById,
-		detachedFromEventId: row.detachedFromEventId ?? undefined,
-		detachedFromOccurrenceStart: row.detachedFromOccurrenceStart
-			? DateTime.fromDate(row.detachedFromOccurrenceStart)
-			: undefined,
 
 		createdAt: DateTime.fromDate(row.createdAt),
 		reminders,
@@ -113,10 +96,6 @@ export const toEventPersistence = (event: Event): EventRow => ({
 
 	spaceId: event.spaceId,
 	createdById: event.createdById,
-	detachedFromEventId: event.detachedFromEventId ?? null,
-	detachedFromOccurrenceStart: event.detachedFromOccurrenceStart
-		? event.detachedFromOccurrenceStart.value
-		: null,
 
 	createdAt: event.createdAt.value,
 	updatedAt: new Date(),
@@ -137,14 +116,3 @@ export const toReminderPersistence = (reminder: EventReminder): EventReminderRow
 	createdAt: reminder.createdAt.value,
 	updatedAt: new Date(),
 });
-
-/**
- * Маппит строку исключения из persistence-слоя в доменный маркер.
- */
-export const toEventExceptionDomain = (row: EventExceptionRow): EventException =>
-	new EventException({
-		id: row.id,
-		eventId: row.eventId,
-		occurrenceStart: DateTime.fromDate(row.occurrenceStart),
-		createdAt: DateTime.fromDate(row.createdAt),
-	});

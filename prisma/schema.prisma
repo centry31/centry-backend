@@ -180,17 +180,10 @@ model Event {
   description String?
 
   start    DateTime
+  duration Int
+
   rrule    String?
   timeZone String
-  duration Int
-  isAllDay Boolean  @default(false)
-
-  location String?
-
-  detachedFromEventId         String?
-  detachedFromOccurrenceStart DateTime?
-  detachedFromEvent           Event?    @relation("DetachedEvents", fields: [detachedFromEventId], references: [id], onDelete: Cascade)
-  detachedEvents              Event[]   @relation("DetachedEvents")
 
   spaceId String
   space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
@@ -201,23 +194,8 @@ model Event {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  reminders  EventReminder[]
-  exceptions EventException[]
+  reminders EventReminder[]
 
-  @@unique([detachedFromEventId, detachedFromOccurrenceStart])
-  @@index([spaceId, detachedFromEventId])
+  @@index([spaceId])
   @@map("events")
-}
-
-model EventException {
-  id String @id @default(uuid())
-
-  event           Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  eventId         String
-  occurrenceStart DateTime
-  createdAt       DateTime @default(now())
-
-  @@unique([eventId, occurrenceStart])
-  @@index([eventId, occurrenceStart])
-  @@map("event_exceptions")
 }

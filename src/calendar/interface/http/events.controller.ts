@@ -98,8 +98,9 @@ export class EventsController {
 			start: createEventDto.start,
 			duration: createEventDto.duration,
 			timeZone: createEventDto.timeZone,
-			recurrence: createEventDto.recurrence,
 			createdById: user.id,
+			frequency: createEventDto.frequency,
+			until: createEventDto.until,
 			spaceId,
 			reminders: createEventDto.reminders ?? [],
 			isNotifyMessage: createEventDto.isNotifyMessage,
@@ -120,17 +121,18 @@ export class EventsController {
 		@Body() updateEventDto: UpdateEventDto,
 	) {
 		await this.updateEventUseCase.execute({
-			eventId,
+			id: eventId,
 			spaceId,
 			title: updateEventDto.title,
 			description: updateEventDto.description,
-			start: updateEventDto.start,
+			newStart: updateEventDto.newStart,
+			oldStart: updateEventDto.oldStart,
 			duration: updateEventDto.duration,
 			timeZone: updateEventDto.timeZone,
-			recurrence: updateEventDto.recurrence,
+			frequency: updateEventDto.frequency,
+			until: updateEventDto.until,
 			reminders: updateEventDto.reminders ?? [],
 			scope: updateEventDto.scope,
-			occurrenceStart: updateEventDto.occurrenceStart,
 		});
 		return formatResponse(null, 'Событие обновлено');
 	}
@@ -149,7 +151,7 @@ export class EventsController {
 			eventId,
 			spaceId,
 			scope: query.scope,
-			occurrenceStart: query.occurrenceStart,
+			start: query.start,
 		});
 		return formatResponse(null, 'Событие удалено');
 	}
