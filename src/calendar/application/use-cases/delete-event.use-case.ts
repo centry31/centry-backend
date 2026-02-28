@@ -3,10 +3,6 @@ import {
 	EventRepository,
 } from 'calendar/application/ports/event/event.repository';
 import {
-	EVENT_EXCEPTION_REPOSITORY,
-	EventExceptionRepository,
-} from 'calendar/application/ports/event-exception/event-exception.repository';
-import {
 	REMINDER_PLANNING,
 	ReminderPlanning,
 } from 'calendar/application/ports/reminder-planning/reminder-planning.port';
@@ -16,115 +12,64 @@ import {
 } from 'calendar/application/ports/reminder-scheduler/reminder-scheduler.port';
 
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { RecurrenceService } from 'calendar/application/services/recurrence/recurrence.service';
+import { parseRruleWithSourceOrThrow } from 'calendar/application/services/rrule/parse-rrule.helper';
 import { runUseCase } from 'common/application/errors/run-use-case';
+import { RRuleSet } from 'rrule';
 
-/**
- * Команда удаления.
- */
 type Cmd = {
 	spaceId: string;
 	eventId: string;
-	scope?: 'SERIES' | 'THIS';
-	occurrenceStart?: Date;
+	scope: 'SERIES' | 'THIS';
+	start: Date;
 };
 
-/**
- * Удаляет либо:
- * - всю серию/одноразовое событие;
- * - один инстанс (исключение + очистка `detached`).
- */
 @Injectable()
 export class DeleteEventUseCase {
 	constructor(
 		@Inject(EVENT_REPOSITORY)
 		private readonly eventRepository: EventRepository,
 
-		@Inject(EVENT_EXCEPTION_REPOSITORY)
-		private readonly eventExceptionRepository: EventExceptionRepository,
-
 		@Inject(REMINDER_SCHEDULER)
 		private readonly reminderScheduler: ReminderScheduler,
 
 		@Inject(REMINDER_PLANNING)
-		private readonly reminderPlanningService: ReminderPlanning,
-
-		private readonly recurrenceService: RecurrenceService,
+		private readonly reminderPlanning: ReminderPlanning,
 	) {}
 
-	/**
-	 * Основной процесс удаления.
-	 */
 	async execute(cmd: Cmd): Promise<void> {
 		return runUseCase(async () => {
 			const event = await this.eventRepository.findByIdWithSpaceId(cmd.eventId, cmd.spaceId);
 			if (!event) {
-				throw new NotFoundException('Событие не найдено');
+				throw new NotFoundException('Такое событие не найдено');
 			}
 
-			const scope = cmd.scope ?? 'SERIES';
-			if (scope === 'SERIES' || !event.isRecurring()) {
-				await this.deleteWholeEvent(event.id, cmd.spaceId);
-				return;
+			if (cmd.scope === 'SERIES' || !event.rrule) {
+				await this.reminderScheduler.unscheduleMany(event.reminders.map((r) => r.id));
+				return await this.eventRepository.delete(event.id, event.spaceId);
 			}
 
-			const occurrenceStart = this.requireOccurrenceStart(cmd.occurrenceStart);
-			const inSeries = this.recurrenceService.isOccurrenceInSeries({
-				start: event.start.value,
-				rrule: event.rrule,
-				timeZone: event.timeZone,
-				occurrenceStart,
-			});
-			if (!inSeries) {
-				throw new BadRequestException('occurrenceStart не входит в серию');
-			}
+			if (cmd.scope === 'THIS') {
+				const { rruleSet: parsedRrule, sourceRule } = parseRruleWithSourceOrThrow(
+					event.rrule,
+				);
 
-			await this.eventExceptionRepository.upsert(event.id, occurrenceStart);
-			const deletedDetached = await this.eventRepository.deleteDetachedByOrigin(
-				event.id,
-				occurrenceStart,
-			);
-			if (deletedDetached) {
-				for (const reminder of deletedDetached.reminders) {
-					await this.reminderScheduler.unschedule(reminder.id);
+				const nextMillisecond = new Date(cmd.start.getTime() + 1);
+				const isOccurrenceInSeries =
+					parsedRrule.between(cmd.start, nextMillisecond, true).length > 0;
+				if (!isOccurrenceInSeries) {
+					throw new BadRequestException('start не входит в серию');
 				}
+
+				const newRruleSet = new RRuleSet();
+				newRruleSet.rrule(sourceRule);
+				parsedRrule.exdates().forEach((exDate) => newRruleSet.exdate(exDate));
+				newRruleSet.exdate(cmd.start);
+				const newRruleString = newRruleSet.toString();
+
+				event.changeRrule(newRruleString);
+				await this.eventRepository.update(event);
+				await this.reminderPlanning.replanEvent(event.id);
 			}
-
-			await this.reminderPlanningService.replanEvent(event.id);
 		});
-	}
-
-	/**
-	 * Проверяет, что для `scope=THIS` передан валидный `occurrenceStart`.
-	 */
-	private requireOccurrenceStart(value?: Date): Date {
-		const isValidDate = value instanceof Date && !Number.isNaN(value.getTime());
-		if (!isValidDate) {
-			throw new BadRequestException('occurrenceStart обязателен для scope=THIS');
-		}
-
-		return value;
-	}
-
-	/**
-	 * Удаляет корневое событие и снимает reminders у корня и `detached`-потомков.
-	 */
-	private async deleteWholeEvent(eventId: string, spaceId: string): Promise<void> {
-		const root = await this.eventRepository.findByIdWithSpaceId(eventId, spaceId);
-		if (!root) {
-			return;
-		}
-		const detached = await this.eventRepository.findManyDetachedByOriginEventId(root.id);
-		const reminderIds = [
-			...root.reminders.map((reminder) => reminder.id),
-			...detached.flatMap((detachedEvent) =>
-				detachedEvent.reminders.map((reminder) => reminder.id),
-			),
-		];
-
-		await this.eventRepository.delete(root.id, spaceId);
-		for (const reminderId of reminderIds) {
-			await this.reminderScheduler.unschedule(reminderId);
-		}
 	}
 }

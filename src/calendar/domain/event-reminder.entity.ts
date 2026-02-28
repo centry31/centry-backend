@@ -1,10 +1,7 @@
 import { DomainValidationError } from 'common/domain/errors/domain.error';
 import { DateTime } from 'common/domain/value-objects/date-time.vo';
 
-/**
- * Данные конструктора доменной сущности {@link EventReminder}.
- */
-type EventReminderProps = {
+type Props = {
 	id: string;
 	eventId: string;
 	offsetMinutes: number;
@@ -15,13 +12,6 @@ type EventReminderProps = {
 	updatedAt: DateTime;
 };
 
-/**
- * Сущность напоминания, привязанного к событию.
- *
- * Модель планирования:
- * - `nextOccurrenceStart`: следующий целевой инстанс;
- * - `scheduledAt`: когда нужно отправить напоминание для этого инстанса.
- */
 export class EventReminder {
 	public readonly id: string;
 	public readonly eventId: string;
@@ -36,7 +26,7 @@ export class EventReminder {
 	/**
 	 * Создает reminder и проверяет, что offset не отрицательный.
 	 */
-	constructor(props: EventReminderProps) {
+	constructor(props: Props) {
 		const hasInvalidOffset = props.offsetMinutes < 0;
 		if (hasInvalidOffset) {
 			throw new DomainValidationError('offsetMinutes must be >= 0');

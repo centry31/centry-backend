@@ -1,21 +1,24 @@
+import type { DateTime } from 'common/domain/value-objects/date-time.vo';
+
 import {
 	EVENT_REPOSITORY,
 	EventRepository,
-	type ReminderPlanningState,
 } from 'calendar/application/ports/event/event.repository';
 import {
 	REMINDER_PLANNING,
 	ReminderPlanning,
 } from 'calendar/application/ports/reminder-planning/reminder-planning.port';
+import type { ReminderJobData } from 'calendar/application/ports/reminder-scheduler/reminder-scheduler.port';
 import { TG_NOTIFIER, TgNotifier } from 'calendar/application/ports/tg-notifier/tg-notifier.port';
 
-import type { ReminderJobData } from './bull-reminder.scheduler';
-import { REMINDER_JOB_NAME, REMINDER_QUEUE_NAME } from './reminder-queue.constants';
+import { REMINDER_QUEUE_NAME } from './reminder-queue.constants';
 
-import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger } from '@nestjs/common';
-import type { Job } from 'bullmq';
+import { Job } from 'bullmq';
 import { SPACE_TG_CHAT_QUERY, SpaceTgChatQuery } from 'spaces';
+
+type ReminderProcessResult = { replanEventId: string | null };
 
 /**
  * Процессор BullMQ, который отправляет reminders и перепланирует следующий инстанс.
@@ -35,99 +38,74 @@ export class ReminderProcessor extends WorkerHost {
 		private readonly spaceTgChatQuery: SpaceTgChatQuery,
 
 		@Inject(REMINDER_PLANNING)
-		private readonly reminderPlanningService: ReminderPlanning,
+		private readonly reminderPlanning: ReminderPlanning,
 	) {
 		super();
 	}
 
-	/**
-	 * Точка входа процессора.
-	 *
-	 * Защитные проверки:
-	 * - игнорирует неизвестные имена jobs;
-	 * - отбрасывает устаревшие jobs сравнением planned occurrence с planning state из БД.
-	 */
-	async process(job: Job<ReminderJobData>): Promise<void> {
-		if (job.name !== REMINDER_JOB_NAME) {
-			return;
-		}
+	async process(job: Job<ReminderJobData>): Promise<ReminderProcessResult> {
+		const data = job.data;
 
-		const { reminderId, plannedOccurrenceStartAtIso } = job.data;
-		const reminderState = await this.eventRepository.findReminderPlanningState(reminderId);
-		if (!this.hasActivePlanningState(reminderState)) {
+		const event = await this.eventRepository.findById(data.eventId);
+		if (!event) {
 			this.logger.warn(
-				`Пропуск задачи напоминания ${job.id}: reminder=${reminderId} не имеет активного состояния планирования`,
+				`Событие не найдено, reminderId=${data.reminderId}, eventId=${data.eventId}`,
 			);
-			return;
+			return { replanEventId: null };
 		}
 
-		const actualOccurrenceStartIso = reminderState.nextOccurrenceStart.toISOString();
-		if (actualOccurrenceStartIso !== plannedOccurrenceStartAtIso) {
+		const reminder = event.reminders.find((r) => r.id === data.reminderId);
+		if (!reminder) {
 			this.logger.warn(
-				`Пропуск устаревшей задачи напоминания ${job.id}: reminder=${reminderId} plannedOccurrence=${plannedOccurrenceStartAtIso} actualOccurrence=${actualOccurrenceStartIso}`,
+				`Напоминание не найдено у события, reminderId=${data.reminderId}, eventId=${data.eventId}`,
 			);
-			return;
+			return { replanEventId: null };
 		}
 
-		const targets = await this.spaceTgChatQuery.getActiveTargetsBySpaceId(
-			reminderState.spaceId,
-		);
-		if (targets.length === 0) {
+		const spaceTgChats = await this.spaceTgChatQuery.getActiveTargetsBySpaceId(event.spaceId);
+		if (!spaceTgChats.length) {
 			this.logger.warn(
-				`Нет активных TG-целей для reminder=${reminderId} event=${reminderState.eventId}; отправка пропущена`,
+				`Напоминание некуда отправить, reminderId=${data.reminderId}, eventId=${data.eventId}`,
 			);
-			await this.reminderPlanningService.replanReminder(reminderId, {
-				startOccurrenceHint: new Date(reminderState.nextOccurrenceStart.getTime() + 1),
-			});
-			return;
+			return { replanEventId: null };
 		}
 
-		const text = this.buildReminderText(
-			reminderState.eventTitle,
-			plannedOccurrenceStartAtIso,
-			reminderState.offsetMinutes,
-		);
-		for (const target of targets) {
-			await this.notifier.send({
-				chatId: target.chatId,
-				messageThreadId: target.messageThreadId,
-				text,
-			});
-		}
+		const message = this.buildReminderText(event.title, event.start, reminder.offsetMinutes);
 
-		await this.eventRepository.markReminderSent(reminderId);
-		await this.reminderPlanningService.replanReminder(reminderId, {
-			startOccurrenceHint: new Date(reminderState.nextOccurrenceStart.getTime() + 1),
-		});
-		this.logger.log(
-			`reminder_processed reminderId=${reminderId} occurrence=${plannedOccurrenceStartAtIso}`,
+		const chatRequests = spaceTgChats.map((chat) =>
+			this.notifier.send({
+				chatId: chat.chatId,
+				messageThreadId: chat.messageThreadId,
+				text: message,
+			}),
 		);
+		await Promise.all(chatRequests);
+		await this.eventRepository.markReminderSent(reminder.id);
+		return { replanEventId: event.id };
 	}
 
-	/**
-	 * Формирует человекочитаемый текст reminder-сообщения для Telegram.
-	 */
+	@OnWorkerEvent('completed')
+	async onCompleted(_: Job<ReminderJobData>, result: ReminderProcessResult): Promise<void> {
+		if (!result?.replanEventId) {
+			return;
+		}
+
+		try {
+			await this.reminderPlanning.replanEvent(result.replanEventId);
+		} catch (error) {
+			this.logger.error(
+				`Ошибка перепланирования reminders, eventId=${result.replanEventId}`,
+				error instanceof Error ? error.stack : String(error),
+			);
+		}
+	}
+
 	private buildReminderText(
 		title: string,
-		eventStartAtIso: string,
+		eventStartAtIso: DateTime,
 		offsetMinutes: number,
 	): string {
-		const startAt = new Date(eventStartAtIso);
-		const startText = Number.isNaN(startAt.getTime())
-			? eventStartAtIso
-			: startAt.toLocaleString('ru-RU');
-
+		const startText = eventStartAtIso.toDate().toLocaleString('ru-RU');
 		return `Напоминание: ${title}\nНачало: ${startText}\nЗа ${offsetMinutes} мин.`;
-	}
-
-	/**
-	 * Проверка типа в рантайме: reminder должен существовать и иметь запланированный инстанс.
-	 */
-	private hasActivePlanningState(
-		reminderState: ReminderPlanningState | null,
-	): reminderState is ReminderPlanningState & { nextOccurrenceStart: Date } {
-		const isReminderStateMissing = !reminderState;
-		const hasNoPlannedOccurrence = !reminderState?.nextOccurrenceStart;
-		return !(isReminderStateMissing || hasNoPlannedOccurrence);
 	}
 }
