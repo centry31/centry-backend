@@ -18,6 +18,7 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
     timeout-minutes: 20
 
     steps:
@@ -33,19 +34,30 @@ jobs:
 
             REF="${{ github.event.inputs.ref }}"
             DEPLOY_PATH="${{ github.event.inputs.deploy_path }}"
-            ENV_B64='${{ secrets.BACKEND_ENV_B64 }}'
             TS="$(date +%Y%m%d-%H%M%S)"
 
             cd "$DEPLOY_PATH"
             mkdir -p /opt/backups/centry-manual
-            if [ -z "$ENV_B64" ]; then
-              echo "Missing secret BACKEND_ENV_B64"
-              exit 1
-            fi
             if [ -f .env ]; then
               cp -a .env "/opt/backups/centry-manual/backend.env.$TS"
             fi
-            printf '%s' "$ENV_B64" | base64 -d > .env
+            cat > .env <<'EOF'
+            PORT=${{ secrets.PORT }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            CLIENT_URL=${{ secrets.CLIENT_URL }}
+            TG_BOT_TOKEN=${{ secrets.TG_BOT_TOKEN }}
+            JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+            REDIS_PORT=${{ secrets.REDIS_PORT }}
+            REDIS_HOST=${{ secrets.REDIS_HOST }}
+            BULL_BOARD_USERNAME=${{ secrets.BULL_BOARD_USERNAME }}
+            BULL_BOARD_PASSWORD=${{ secrets.BULL_BOARD_PASSWORD }}
+            TG_BOT_SERVICE_URL=${{ secrets.TG_BOT_SERVICE_URL }}
+            TG_API_TOKEN=${{ secrets.TG_API_TOKEN }}
+            BMSTU_API_URL=${{ secrets.BMSTU_API_URL }}
+            BMSTU_SRV_URL=${{ secrets.BMSTU_SRV_URL }}
+            BMSTU_CACHE_TTL_SECONDS=${{ secrets.BMSTU_CACHE_TTL_SECONDS }}
+            TZ=${{ secrets.TZ }}
+            EOF
             chmod 600 .env
 
             git fetch origin "$REF"
