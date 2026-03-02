@@ -7,6 +7,7 @@ import { BmstuModule } from 'bmstu/bmstu.module';
 import { CalendarModule } from 'calendar/calendar.module';
 import { SpacesModule } from 'spaces/spaces.module';
 import { UsersModule } from 'users/users.module';
+import { ServiceModule } from './service/service.module';
 
 @Module({
 	controllers: [],
@@ -25,6 +26,7 @@ import { UsersModule } from 'users/users.module';
 		SpacesModule,
 		CalendarModule,
 		BmstuModule,
+		ServiceModule,
 	],
 })
 export class AppModule {}
