@@ -1,0 +1,77 @@
+name: Backend Deploy Manual
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to deploy (branch/tag)'
+        required: true
+        default: 'release/0.0.0'
+      deploy_path:
+        description: 'Path to backend repo on server'
+        required: true
+        default: '/opt/centry/centry-backend'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ vars.DEPLOY_SSH_HOST }}
+          username: ${{ vars.DEPLOY_SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+
+            REF="${{ github.event.inputs.ref }}"
+            DEPLOY_PATH="${{ github.event.inputs.deploy_path }}"
+            TS="$(date +%Y%m%d-%H%M%S)"
+
+            cd "$DEPLOY_PATH"
+            mkdir -p /opt/backups/centry-manual
+            if [ -f .env ]; then
+              cp -a .env "/opt/backups/centry-manual/backend.env.$TS"
+            fi
+            cat > .env <<'EOF'
+            PORT=${{ vars.PORT }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            CLIENT_URL=${{ vars.CLIENT_URL }}
+            TG_BOT_TOKEN=${{ secrets.TG_BOT_TOKEN }}
+            JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+            REDIS_PORT=${{ vars.REDIS_PORT }}
+            REDIS_HOST=${{ vars.REDIS_HOST }}
+            BULL_BOARD_USERNAME=${{ vars.BULL_BOARD_USERNAME }}
+            BULL_BOARD_PASSWORD=${{ secrets.BULL_BOARD_PASSWORD }}
+            TG_BOT_SERVICE_URL=${{ vars.TG_BOT_SERVICE_URL }}
+            TG_API_TOKEN=${{ secrets.TG_API_TOKEN }}
+            BMSTU_API_URL=${{ vars.BMSTU_API_URL }}
+            BMSTU_SRV_URL=${{ vars.BMSTU_SRV_URL }}
+            BMSTU_CACHE_TTL_SECONDS=${{ vars.BMSTU_CACHE_TTL_SECONDS }}
+            TZ=${{ vars.TZ }}
+            EOF
+            chmod 600 .env
+
+            git fetch origin "$REF"
+            git checkout "$REF"
+            git pull --ff-only origin "$REF"
+
+            yarn install --frozen-lockfile
+            yarn build
+
+            if pm2 describe centry-backend >/dev/null 2>&1; then
+              pm2 restart centry-backend --update-env
+            else
+              pm2 start dist/main.js --name centry-backend
+            fi
+            pm2 save
+
+            test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/api/)" != "000"
