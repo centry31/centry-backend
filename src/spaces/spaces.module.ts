@@ -8,9 +8,10 @@ import { CreateSpaceInviteCodeUseCase } from './application/use-cases/space-invi
 import { DeleteSpaceInviteCodeUseCase } from './application/use-cases/space-invite-code/delete-space-invite-code.use-case';
 import { GetActiveSpaceInviteCodesUseCase } from './application/use-cases/space-invite-code/get-active-space-invite-codes.use-case';
 import { GetInfoSpaceInviteCodeUseCase } from './application/use-cases/space-invite-code/get-info-space-invite-code.use-case';
+import { DeleteSpaceMemberUseCase } from './application/use-cases/space-member/delete-space-member.use-case';
 import { GetSpaceMembersUseCase } from './application/use-cases/space-member/get-space-members.use-case';
 import { LeaveSpaceUseCase } from './application/use-cases/space-member/leave-space.use-case';
-import { RemoveSpaceMemberUseCase } from './application/use-cases/space-member/remove-space-member.use-case';
+import { DeleteSpaceTgChatUseCase } from './application/use-cases/space-tg-chat/delete-space-tg-chat.use-case';
 import { GetSpaceTgChatsUseCase } from './application/use-cases/space-tg-chat/get-space-tg-chats.use-case';
 import { CreateSpaceTgChatLinkCodeUseCase } from './application/use-cases/space-tg-chat-link-code/create-space-tg-chat-link-code.use-case';
 import { UseSpaceTgChatLinkCodeUseCase } from './application/use-cases/space-tg-chat-link-code/use-space-tg-chat-link-code.use-case';
@@ -59,7 +60,7 @@ import { USER_QUERY, UsersModule } from 'users';
 		CreateSpaceTgChatLinkCodeUseCase,
 		UseSpaceTgChatLinkCodeUseCase,
 
-		RemoveSpaceMemberUseCase,
+		DeleteSpaceMemberUseCase,
 		LeaveSpaceUseCase,
 		GetSpaceMembersUseCase,
 
@@ -70,6 +71,7 @@ import { USER_QUERY, UsersModule } from 'users';
 		DeleteSpaceInviteCodeUseCase,
 
 		GetSpaceTgChatsUseCase,
+		DeleteSpaceTgChatUseCase,
 
 		SpaceOwnerAccessGuard,
 		SpaceMemberAccessGuard,
