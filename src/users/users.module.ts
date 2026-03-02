@@ -1,6 +1,8 @@
 import { InitAuthUseCase } from './application/use-cases/auth/init-auth.use-case';
 import { TelegramMiniAppAuthUseCase } from './application/use-cases/auth/telegram-mini-app-auth.use-case';
-import { TelegramWidgetAuthUseCase } from './application/use-cases/auth/telegram-widget-auth-use.case';
+import { TelegramOidcCreateNonceUseCase } from './application/use-cases/auth/telegram-oidc-create-nonce.use-case';
+import { TelegramOidcLoginAuthUseCase } from './application/use-cases/auth/telegram-oidc-login-auth.use-case';
+import { TelegramOidcNonceStore } from './application/use-cases/auth/telegram-oidc-nonce.store';
 import { RegisterUserUseCase } from './application/use-cases/user/register-user.use-case';
 
 import { TOKEN_SERVICE } from './application/ports/jwt/token.service';
@@ -31,7 +33,9 @@ import { PrismaModule } from 'prisma.module';
 	controllers: [AuthController],
 	providers: [
 		RegisterUserUseCase,
-		TelegramWidgetAuthUseCase,
+		TelegramOidcNonceStore,
+		TelegramOidcCreateNonceUseCase,
+		TelegramOidcLoginAuthUseCase,
 		TelegramMiniAppAuthUseCase,
 		InitAuthUseCase,
 
