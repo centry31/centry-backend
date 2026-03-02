@@ -17,7 +17,7 @@ type Cmd = {
 	userId: string;
 };
 
-export class RemoveSpaceMemberUseCase {
+export class DeleteSpaceMemberUseCase {
 	constructor(
 		@Inject(SPACE_MEMBER_REPOSITORY)
 		private readonly spaceMemberRepository: SpaceMemberRepository,
