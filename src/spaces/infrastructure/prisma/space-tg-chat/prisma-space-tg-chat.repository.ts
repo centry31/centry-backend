@@ -51,4 +51,8 @@ export class PrismaSpaceTgChatRepository implements SpaceTgChatRepository {
 			data,
 		});
 	}
+
+	async delete(id: string, spaceId: string): Promise<void> {
+		await this.prisma.spaceTgChat.delete({ where: { id, spaceId } });
+	}
 }

@@ -5464,7 +5464,7 @@ node-gyp-build-optional-packages@5.2.2:
   dependencies:
     detect-libc "^2.0.1"
 
-node-ical@^0.25.4:
+node-ical@0.25.4:
   version "0.25.4"
   resolved "https://registry.yarnpkg.com/node-ical/-/node-ical-0.25.4.tgz#f83defd11c4f75ccbb40fe97b0d3300420b8b941"
   integrity sha512-nuKpkcy0f8Qh/H1arBjy8X+iQmpb0gvIlKSFOCsPOkCRDCGnEjsr0aPCHAAUckNTv4yoJmCf4ia9jbookZEHSg==
