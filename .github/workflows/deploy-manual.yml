@@ -25,8 +25,8 @@ jobs:
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.DEPLOY_SSH_HOST }}
-          username: ${{ secrets.DEPLOY_SSH_USER }}
+          host: ${{ vars.DEPLOY_SSH_HOST }}
+          username: ${{ vars.DEPLOY_SSH_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script_stop: true
           script: |
@@ -42,21 +42,21 @@ jobs:
               cp -a .env "/opt/backups/centry-manual/backend.env.$TS"
             fi
             cat > .env <<'EOF'
-            PORT=${{ secrets.PORT }}
+            PORT=${{ vars.PORT }}
             DATABASE_URL=${{ secrets.DATABASE_URL }}
-            CLIENT_URL=${{ secrets.CLIENT_URL }}
+            CLIENT_URL=${{ vars.CLIENT_URL }}
             TG_BOT_TOKEN=${{ secrets.TG_BOT_TOKEN }}
             JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
-            REDIS_PORT=${{ secrets.REDIS_PORT }}
-            REDIS_HOST=${{ secrets.REDIS_HOST }}
-            BULL_BOARD_USERNAME=${{ secrets.BULL_BOARD_USERNAME }}
+            REDIS_PORT=${{ vars.REDIS_PORT }}
+            REDIS_HOST=${{ vars.REDIS_HOST }}
+            BULL_BOARD_USERNAME=${{ vars.BULL_BOARD_USERNAME }}
             BULL_BOARD_PASSWORD=${{ secrets.BULL_BOARD_PASSWORD }}
-            TG_BOT_SERVICE_URL=${{ secrets.TG_BOT_SERVICE_URL }}
+            TG_BOT_SERVICE_URL=${{ vars.TG_BOT_SERVICE_URL }}
             TG_API_TOKEN=${{ secrets.TG_API_TOKEN }}
-            BMSTU_API_URL=${{ secrets.BMSTU_API_URL }}
-            BMSTU_SRV_URL=${{ secrets.BMSTU_SRV_URL }}
-            BMSTU_CACHE_TTL_SECONDS=${{ secrets.BMSTU_CACHE_TTL_SECONDS }}
-            TZ=${{ secrets.TZ }}
+            BMSTU_API_URL=${{ vars.BMSTU_API_URL }}
+            BMSTU_SRV_URL=${{ vars.BMSTU_SRV_URL }}
+            BMSTU_CACHE_TTL_SECONDS=${{ vars.BMSTU_CACHE_TTL_SECONDS }}
+            TZ=${{ vars.TZ }}
             EOF
             chmod 600 .env
 
