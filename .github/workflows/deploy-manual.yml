@@ -74,4 +74,20 @@ jobs:
             fi
             pm2 save
 
-            test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/api/)" != "000"
+            HEALTH_OK=0
+            for attempt in $(seq 1 30); do
+              CODE="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/api/ || true)"
+              if [ "$CODE" != "000" ]; then
+                HEALTH_OK=1
+                echo "Backend is reachable with HTTP $CODE"
+                break
+              fi
+              sleep 2
+            done
+
+            if [ "$HEALTH_OK" -ne 1 ]; then
+              echo "Backend healthcheck failed after 60 seconds"
+              pm2 status || true
+              pm2 logs centry-backend --lines 100 --nostream || true
+              exit 1
+            fi
