@@ -46,6 +46,7 @@ jobs:
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             CLIENT_URL=${{ vars.CLIENT_URL }}
             TG_BOT_TOKEN=${{ secrets.TG_BOT_TOKEN }}
+            TG_OIDC_CLIENT_ID=${{ secrets.TG_OIDC_CLIENT_ID }}
             JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
             REDIS_PORT=${{ vars.REDIS_PORT }}
             REDIS_HOST=${{ vars.REDIS_HOST }}
