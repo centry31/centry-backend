@@ -33,11 +33,20 @@ jobs:
 
             REF="${{ github.event.inputs.ref }}"
             DEPLOY_PATH="${{ github.event.inputs.deploy_path }}"
+            ENV_B64='${{ secrets.BACKEND_ENV_B64 }}'
             TS="$(date +%Y%m%d-%H%M%S)"
 
             cd "$DEPLOY_PATH"
             mkdir -p /opt/backups/centry-manual
-            cp -a .env "/opt/backups/centry-manual/backend.env.$TS"
+            if [ -z "$ENV_B64" ]; then
+              echo "Missing secret BACKEND_ENV_B64"
+              exit 1
+            fi
+            if [ -f .env ]; then
+              cp -a .env "/opt/backups/centry-manual/backend.env.$TS"
+            fi
+            printf '%s' "$ENV_B64" | base64 -d > .env
+            chmod 600 .env
 
             git fetch origin "$REF"
             git checkout "$REF"
