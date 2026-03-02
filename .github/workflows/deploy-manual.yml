@@ -10,7 +10,7 @@ on:
       deploy_path:
         description: 'Path to backend repo on server'
         required: true
-        default: '/opt/centry/centry-backend-v2-clean'
+        default: '/opt/centry/centry-backend'
 
 permissions:
   contents: read
