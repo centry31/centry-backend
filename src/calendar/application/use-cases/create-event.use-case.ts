@@ -107,10 +107,9 @@ export class CreateEventUseCase {
 			}
 
 			const startVo = DateTime.fromDate(cmd.start);
-			const untilVo = DateTime.fromDate(cmd.until);
 			const createdAtVo = DateTime.now();
 
-			if (untilVo.isBefore(startVo)) {
+			if (cmd.until && DateTime.fromDate(cmd.until).isBefore(startVo)) {
 				throw new BadRequestException('Конец повторения должен быть позже конца события');
 			}
 

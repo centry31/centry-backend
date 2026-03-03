@@ -83,9 +83,8 @@ export class UpdateEventUseCase {
 				);
 			}
 
-			const untilVo = DateTime.fromDate(cmd.until);
 			const newStartVo = DateTime.fromDate(cmd.newStart);
-			if (untilVo.isBefore(newStartVo)) {
+			if (cmd.until && DateTime.fromDate(cmd.until).isBefore(newStartVo)) {
 				throw new BadRequestException('Конец повторения должен быть позже конца события');
 			}
 
