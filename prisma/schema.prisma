@@ -130,19 +130,14 @@ model SpaceInviteCode {
   createdByUserId String
   createdBy       User   @relation(fields: [createdByUserId], references: [id])
 
-  maxUses   Int @default(1)
-  usedCount Int @default(0)
-
   spaceId String
   space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
 
-  expiresAt DateTime
   createdAt DateTime  @default(now())
   usedAt    DateTime?
 
   @@id([code])
   @@index([spaceId])
-  @@index([expiresAt])
   @@index([createdByUserId])
   @@map("space_invite_codes")
 }

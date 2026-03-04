@@ -6,8 +6,8 @@ import { UpdateSpaceUseCase } from './application/use-cases/space/update-space.u
 import { AcceptSpaceInviteCodeUseCase } from './application/use-cases/space-invite-code/accept-space-invite-code.use-case';
 import { CreateSpaceInviteCodeUseCase } from './application/use-cases/space-invite-code/create-space-invite-code.use-case';
 import { DeleteSpaceInviteCodeUseCase } from './application/use-cases/space-invite-code/delete-space-invite-code.use-case';
-import { GetActiveSpaceInviteCodesUseCase } from './application/use-cases/space-invite-code/get-active-space-invite-codes.use-case';
 import { GetInfoSpaceInviteCodeUseCase } from './application/use-cases/space-invite-code/get-info-space-invite-code.use-case';
+import { GetSpaceInviteCodesUseCase } from './application/use-cases/space-invite-code/get-space-invite-codes.use-case';
 import { DeleteSpaceMemberUseCase } from './application/use-cases/space-member/delete-space-member.use-case';
 import { GetSpaceMembersUseCase } from './application/use-cases/space-member/get-space-members.use-case';
 import { LeaveSpaceUseCase } from './application/use-cases/space-member/leave-space.use-case';
@@ -67,7 +67,7 @@ import { USER_QUERY, UsersModule } from 'users';
 		AcceptSpaceInviteCodeUseCase,
 		CreateSpaceInviteCodeUseCase,
 		GetInfoSpaceInviteCodeUseCase,
-		GetActiveSpaceInviteCodesUseCase,
+		GetSpaceInviteCodesUseCase,
 		DeleteSpaceInviteCodeUseCase,
 
 		GetSpaceTgChatsUseCase,

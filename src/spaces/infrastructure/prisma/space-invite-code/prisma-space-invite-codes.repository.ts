@@ -34,9 +34,9 @@ export class PrismaSpaceInviteCodesRepository implements SpaceInviteCodeReposito
 		return row ? toDomain(row) : null;
 	}
 
-	async findActiveBySpace(spaceId: string): Promise<SpaceInviteCode[]> {
+	async findBySpaceId(spaceId: string): Promise<SpaceInviteCode[]> {
 		const rows = await this.prisma.spaceInviteCode.findMany({
-			where: { spaceId, usedAt: null, expiresAt: { gt: new Date() } },
+			where: { spaceId },
 		});
 
 		if (!rows.length) return [];

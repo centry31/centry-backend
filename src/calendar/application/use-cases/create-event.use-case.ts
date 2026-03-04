@@ -12,9 +12,9 @@ import {
 	REMINDER_PLANNING,
 	ReminderPlanning,
 } from 'calendar/application/ports/reminder-planning/reminder-planning.port';
-import { TG_NOTIFIER, TgNotifier } from 'calendar/application/ports/tg-notifier/tg-notifier.port';
 
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { EventNotificationService } from 'calendar/application/services/event-notification/event-notification.service';
 import { runUseCase } from 'common/application/errors/run-use-case';
 import { Frequency, RRule, RRuleSet } from 'rrule';
 import { SPACE_TG_CHAT_QUERY, SpaceTgChatQuery } from 'spaces';
@@ -53,35 +53,8 @@ export class CreateEventUseCase {
 		@Inject(REMINDER_PLANNING)
 		private readonly reminderPlanning: ReminderPlanning,
 
-		@Inject(TG_NOTIFIER)
-		private readonly tgNotifier: TgNotifier,
+		private readonly eventNotificationService: EventNotificationService,
 	) {}
-
-	private buildNotifyMessage = (event: Event, notifyMessage?: string) => {
-		const start = event.start.value;
-		const end = new Date(start.getTime() + event.duration * 60_000);
-
-		const formatDate = (date: Date) =>
-			date.toLocaleString('ru-RU', {
-				day: '2-digit',
-				month: '2-digit',
-				year: 'numeric',
-				hour: '2-digit',
-				minute: '2-digit',
-				timeZone: event.timeZone,
-			});
-
-		return [
-			`📅 <b>Новое событие</b>`,
-			`<b>${event.title}</b>`,
-			event.description ? `📝 ${event.description}` : null,
-			`🕒 <b>Начало:</b> ${formatDate(start)}`,
-			`⏳ <b>Конец:</b> ${formatDate(end)}`,
-			notifyMessage ? `💬 ${notifyMessage}` : null,
-		]
-			.filter(Boolean)
-			.join('\n');
-	};
 
 	private mapFrequencyToRrule = (frequency: EventFrequency) => {
 		switch (frequency) {
@@ -159,14 +132,12 @@ export class CreateEventUseCase {
 			await this.reminderPlanning.replanEvent(createdEvent.id);
 
 			if (cmd.isNotifyMessage) {
-				const tgRequests = spaceTgChats.map((spaceTgChat) =>
-					this.tgNotifier.send({
-						chatId: spaceTgChat.chatId,
-						messageThreadId: spaceTgChat.messageThreadId,
-						text: this.buildNotifyMessage(createdEvent, cmd.notifyMessage),
-					}),
-				);
-				await Promise.all(tgRequests);
+				await this.eventNotificationService.notifyCreated({
+					spaceId: cmd.spaceId,
+					scope: createdEvent.isRecurring() ? 'SERIES' : 'ONE',
+					event: this.eventNotificationService.toSnapshot(createdEvent),
+					customMessage: cmd.notifyMessage,
+				});
 			}
 
 			return createdEvent;

@@ -1,4 +1,3 @@
-import { InviteCodeInvalidError } from '@spaces/domain/errors/invite-code-invalid.error';
 import { InviteCodeNotFoundError } from '@spaces/domain/errors/invite-code-not-found.error';
 import { SpaceMember } from '@spaces/domain/space-member.entity';
 
@@ -31,24 +30,16 @@ export class AcceptSpaceInviteCodeUseCase {
 	async execute(cmd: Cmd): Promise<void> {
 		return runUseCase(async () => {
 			const foundCode = await this.spaceInviteCodeRepository.findOneByCode(cmd.code);
-			if (!foundCode) {
-				throw new InviteCodeNotFoundError();
-			}
-			if (!foundCode.canBeUsed()) {
-				throw new InviteCodeInvalidError();
-			}
+			if (!foundCode) throw new InviteCodeNotFoundError();
 
 			const alreadyMember = await this.spaceMemberRepository.findOne(
 				cmd.userId,
 				foundCode.spaceId,
 			);
-			if (alreadyMember) {
-				return;
-			}
+			if (alreadyMember) return;
 
 			const member = new SpaceMember({ userId: cmd.userId, spaceId: foundCode.spaceId });
 			await this.spaceMemberRepository.add(member);
-			foundCode.use();
 			await this.spaceInviteCodeRepository.update(foundCode);
 		});
 	}

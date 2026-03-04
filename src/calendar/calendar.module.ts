@@ -18,6 +18,7 @@ import { HttpTgNotifier } from './infrastructure/telegram/http-tg-notifier';
 
 import { EventsController } from './interface/http/events.controller';
 
+import { EventNotificationService } from './application/services/event-notification/event-notification.service';
 import { ReminderPlanningService } from './application/services/reminder-planning/reminder-planning.service';
 
 import { BullModule } from '@nestjs/bullmq';
@@ -43,6 +44,7 @@ import { UsersModule } from 'users';
 		ImportBmstuScheduleUseCase,
 		ReminderProcessor,
 		ReminderPlanningService,
+		EventNotificationService,
 
 		{ provide: EVENT_REPOSITORY, useClass: PrismaEventRepository },
 		{ provide: SPACE_TG_CHAT_QUERY, useClass: PrismaSpaceTgChatQuery },
