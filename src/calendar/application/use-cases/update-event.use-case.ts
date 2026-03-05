@@ -14,6 +14,7 @@ import {
 } from 'calendar/application/ports/reminder-planning/reminder-planning.port';
 
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { EventNotificationService } from 'calendar/application/services/event-notification/event-notification.service';
 import {
 	getSourceRuleOrThrow,
 	parseRruleSetOrThrow,
@@ -26,6 +27,8 @@ type Reminder = { offsetMinutes: number };
 type EventFrequency = 'NEVER' | 'DAILY' | 'WEEKLY' | 'DOUBLE_WEEKLY' | 'MONTHLY';
 type Cmd = {
 	id: string;
+	spaceId: string;
+
 	title: string;
 	description: string | null;
 
@@ -40,9 +43,10 @@ type Cmd = {
 	frequency: EventFrequency;
 	scope: 'THIS' | 'THIS_AND_FUTURE';
 
-	spaceId: string;
-
 	reminders: Reminder[];
+
+	isNotifyMessage?: boolean;
+	notifyMessage?: string;
 };
 
 @Injectable()
@@ -56,6 +60,8 @@ export class UpdateEventUseCase {
 
 		@Inject(REMINDER_PLANNING)
 		private readonly reminderPlanning: ReminderPlanning,
+
+		private readonly eventNotificationService: EventNotificationService,
 	) {}
 
 	private mapFrequencyToRrule = (frequency: EventFrequency) => {
@@ -106,6 +112,7 @@ export class UpdateEventUseCase {
 	private async updateOne(event: Event, cmd: Cmd) {
 		const newStartVo = DateTime.fromDate(cmd.newStart);
 		const createdAtVo = DateTime.now();
+		const beforeSnapshot = this.eventNotificationService.toSnapshot(event);
 
 		event.changeTitle(cmd.title);
 		event.changeDescription(cmd.description);
@@ -141,11 +148,21 @@ export class UpdateEventUseCase {
 
 		await this.eventRepository.update(event);
 		await this.reminderPlanning.replanEvent(event.id);
+		if (cmd.isNotifyMessage) {
+			await this.eventNotificationService.notifyUpdated({
+				spaceId: event.spaceId,
+				scope: 'ONE',
+				before: beforeSnapshot,
+				after: this.eventNotificationService.toSnapshot(event),
+				customMessage: cmd.notifyMessage,
+			});
+		}
 	}
 
 	private async updateThis(event: Event, cmd: Cmd, rruleSet: RRuleSet) {
 		const createdAtVo = DateTime.now();
 		const newStartVo = DateTime.fromDate(cmd.newStart);
+		const beforeSnapshot = this.eventNotificationService.toSnapshot(event, cmd.oldStart);
 
 		const newEvent = new Event({
 			id: crypto.randomUUID(),
@@ -196,11 +213,21 @@ export class UpdateEventUseCase {
 		await this.eventRepository.update(event);
 		await this.reminderPlanning.replanEvent(event.id);
 		await this.reminderPlanning.replanEvent(newEvent.id);
+		if (cmd.isNotifyMessage) {
+			await this.eventNotificationService.notifyUpdated({
+				spaceId: event.spaceId,
+				scope: 'THIS',
+				before: beforeSnapshot,
+				after: this.eventNotificationService.toSnapshot(newEvent),
+				customMessage: cmd.notifyMessage,
+			});
+		}
 	}
 
 	private async updateThisAndFuture(event: Event, cmd: Cmd, rruleSet: RRuleSet) {
 		const createdAtVo = DateTime.now();
 		const newStartVo = DateTime.fromDate(cmd.newStart);
+		const beforeSnapshot = this.eventNotificationService.toSnapshot(event, cmd.oldStart);
 
 		const newEvent = new Event({
 			id: crypto.randomUUID(),
@@ -255,6 +282,15 @@ export class UpdateEventUseCase {
 			await this.eventRepository.create(newEvent);
 			await this.eventRepository.delete(event.id, cmd.spaceId);
 			await this.reminderPlanning.replanEvent(newEvent.id);
+			if (cmd.isNotifyMessage) {
+				await this.eventNotificationService.notifyUpdated({
+					spaceId: event.spaceId,
+					scope: 'THIS_AND_FUTURE',
+					before: beforeSnapshot,
+					after: this.eventNotificationService.toSnapshot(newEvent),
+					customMessage: cmd.notifyMessage,
+				});
+			}
 			return;
 		}
 
@@ -277,5 +313,14 @@ export class UpdateEventUseCase {
 		await this.eventRepository.update(event);
 		await this.reminderPlanning.replanEvent(event.id);
 		await this.reminderPlanning.replanEvent(newEvent.id);
+		if (cmd.isNotifyMessage) {
+			await this.eventNotificationService.notifyUpdated({
+				spaceId: event.spaceId,
+				scope: 'THIS_AND_FUTURE',
+				before: beforeSnapshot,
+				after: this.eventNotificationService.toSnapshot(newEvent),
+				customMessage: cmd.notifyMessage,
+			});
+		}
 	}
 }

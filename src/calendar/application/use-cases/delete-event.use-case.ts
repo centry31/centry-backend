@@ -12,6 +12,7 @@ import {
 } from 'calendar/application/ports/reminder-scheduler/reminder-scheduler.port';
 
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { EventNotificationService } from 'calendar/application/services/event-notification/event-notification.service';
 import { parseRruleWithSourceOrThrow } from 'calendar/application/services/rrule/parse-rrule.helper';
 import { runUseCase } from 'common/application/errors/run-use-case';
 import { RRuleSet } from 'rrule';
@@ -19,8 +20,12 @@ import { RRuleSet } from 'rrule';
 type Cmd = {
 	spaceId: string;
 	eventId: string;
+
 	scope: 'SERIES' | 'THIS';
 	start: Date;
+
+	isNotifyMessage?: boolean;
+	notifyMessage?: string;
 };
 
 @Injectable()
@@ -34,6 +39,8 @@ export class DeleteEventUseCase {
 
 		@Inject(REMINDER_PLANNING)
 		private readonly reminderPlanning: ReminderPlanning,
+
+		private readonly eventNotificationService: EventNotificationService,
 	) {}
 
 	async execute(cmd: Cmd): Promise<void> {
@@ -44,11 +51,20 @@ export class DeleteEventUseCase {
 			}
 
 			if (cmd.scope === 'SERIES' || !event.rrule) {
-				await this.reminderScheduler.unscheduleMany(event.reminders.map((r) => r.id));
-				return await this.eventRepository.delete(event.id, event.spaceId);
-			}
+				const notificationScope = event.rrule && cmd.scope === 'SERIES' ? 'SERIES' : 'ONE';
 
-			if (cmd.scope === 'THIS') {
+				await this.reminderScheduler.unscheduleMany(event.reminders.map((r) => r.id));
+				await this.eventRepository.delete(event.id, event.spaceId);
+
+				if (cmd.isNotifyMessage) {
+					await this.eventNotificationService.notifyDeleted({
+						spaceId: event.spaceId,
+						scope: notificationScope,
+						event: this.eventNotificationService.toSnapshot(event),
+						customMessage: cmd.notifyMessage,
+					});
+				}
+			} else if (cmd.scope === 'THIS') {
 				const { rruleSet: parsedRrule, sourceRule } = parseRruleWithSourceOrThrow(
 					event.rrule,
 				);
@@ -69,6 +85,15 @@ export class DeleteEventUseCase {
 				event.changeRrule(newRruleString);
 				await this.eventRepository.update(event);
 				await this.reminderPlanning.replanEvent(event.id);
+
+				if (cmd.isNotifyMessage) {
+					await this.eventNotificationService.notifyDeleted({
+						spaceId: event.spaceId,
+						scope: 'THIS',
+						event: this.eventNotificationService.toSnapshot(event, cmd.start),
+						customMessage: cmd.notifyMessage,
+					});
+				}
 			}
 		});
 	}
