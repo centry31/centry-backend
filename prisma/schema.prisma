@@ -16,6 +16,8 @@ model User {
   username    String? @unique // @username (может быть null)
   displayName String
 
+  isOnboardingCompleted Boolean @default(false)
+
   // timeZone String @default("Europe/Moscow")
 
   createdAt DateTime @default(now())
