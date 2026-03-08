@@ -66,6 +66,7 @@ jobs:
             git pull --ff-only origin "$REF"
 
             yarn install --frozen-lockfile
+            yarn prisma generate
             yarn build
 
             if pm2 describe centry-backend >/dev/null 2>&1; then
