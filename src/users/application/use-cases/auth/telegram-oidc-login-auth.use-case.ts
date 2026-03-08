@@ -234,6 +234,7 @@ export class TelegramOidcLoginAuthUseCase {
 				tgId: TgId.fromBigInt(tgId),
 				displayName: this.extractDisplayName(parsed.payload),
 				username: this.extractUsername(parsed.payload),
+				isOnboardingCompleted: false,
 			});
 			await this.userRepository.create(user);
 
