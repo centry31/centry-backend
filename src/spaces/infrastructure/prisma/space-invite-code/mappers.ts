@@ -1,6 +1,7 @@
 import { SpaceInviteCode } from '@spaces/domain/space-invite-code.entity';
 import { InviteCode } from '@spaces/domain/value-objects/invite-code.vo';
 import { DateTime } from 'common/domain/value-objects/date-time.vo';
+
 import type { Prisma } from '@prisma/client';
 
 type Row = {
