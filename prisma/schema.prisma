@@ -16,6 +16,8 @@ model User {
   username    String? @unique // @username (может быть null)
   displayName String
 
+  isOnboardingCompleted Boolean @default(false)
+
   // timeZone String @default("Europe/Moscow")
 
   createdAt DateTime @default(now())
@@ -130,19 +132,14 @@ model SpaceInviteCode {
   createdByUserId String
   createdBy       User   @relation(fields: [createdByUserId], references: [id])
 
-  maxUses   Int @default(1)
-  usedCount Int @default(0)
-
   spaceId String
   space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
 
-  expiresAt DateTime
   createdAt DateTime  @default(now())
   usedAt    DateTime?
 
   @@id([code])
   @@index([spaceId])
-  @@index([expiresAt])
   @@index([createdByUserId])
   @@map("space_invite_codes")
 }

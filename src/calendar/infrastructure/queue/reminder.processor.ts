@@ -70,7 +70,12 @@ export class ReminderProcessor extends WorkerHost {
 			return { replanEventId: null };
 		}
 
-		const message = this.buildReminderText(event.title, event.start, reminder.offsetMinutes);
+		const message = this.buildReminderText(
+			event.title,
+			event.start,
+			event.timeZone,
+			reminder.offsetMinutes,
+		);
 
 		const chatRequests = spaceTgChats.map((chat) =>
 			this.notifier.send({
@@ -103,9 +108,17 @@ export class ReminderProcessor extends WorkerHost {
 	private buildReminderText(
 		title: string,
 		eventStartAtIso: DateTime,
+		eventTimeZone: string,
 		offsetMinutes: number,
 	): string {
-		const startText = eventStartAtIso.toDate().toLocaleString('ru-RU');
+		const startText = eventStartAtIso.toDate().toLocaleString('ru-RU', {
+			day: '2-digit',
+			month: '2-digit',
+			year: 'numeric',
+			hour: '2-digit',
+			minute: '2-digit',
+			timeZone: eventTimeZone,
+		});
 		return `Напоминание: ${title}\nНачало: ${startText}\nЗа ${offsetMinutes} мин.`;
 	}
 }

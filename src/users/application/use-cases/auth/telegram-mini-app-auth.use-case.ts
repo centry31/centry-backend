@@ -108,6 +108,7 @@ export class TelegramMiniAppAuthUseCase {
 				tgId: TgId.fromBigInt(telegramId),
 				displayName: telegramUser.first_name,
 				username: telegramUser.username,
+				isOnboardingCompleted: false,
 			});
 			await this.userRepository.create(user);
 

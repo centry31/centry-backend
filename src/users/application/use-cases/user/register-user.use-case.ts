@@ -31,6 +31,7 @@ export class RegisterUserUseCase {
 				tgId: tg,
 				displayName: cmd.displayName,
 				username: cmd.username,
+				isOnboardingCompleted: false,
 			});
 
 			return this.userRepository.create(user);

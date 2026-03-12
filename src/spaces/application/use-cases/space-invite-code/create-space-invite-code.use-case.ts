@@ -1,7 +1,6 @@
 import { randomBytes } from 'crypto';
 
 import { SpaceInviteCode } from '@spaces/domain/space-invite-code.entity';
-import { ExpiresAt } from '@spaces/domain/value-objects/expires-at.vo';
 import { InviteCode } from '@spaces/domain/value-objects/invite-code.vo';
 
 import {
@@ -13,8 +12,6 @@ import { Inject } from '@nestjs/common';
 import { runUseCase } from 'common/application/errors/run-use-case';
 
 type Cmd = {
-	maxUses: number;
-	expiresAt: Date;
 	spaceId: string;
 	createdByUserId: string;
 };
@@ -31,8 +28,6 @@ export class CreateSpaceInviteCodeUseCase {
 			const spaceInviteCode = new SpaceInviteCode({
 				code: new InviteCode(code),
 				spaceId: cmd.spaceId,
-				maxUses: cmd.maxUses,
-				expiresAt: new ExpiresAt(cmd.expiresAt),
 				createdByUserId: cmd.createdByUserId,
 			});
 			return this.spaceInviteCodeRepository.create(spaceInviteCode);

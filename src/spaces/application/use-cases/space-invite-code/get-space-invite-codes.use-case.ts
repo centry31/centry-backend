@@ -12,7 +12,7 @@ type Cmd = {
 	spaceId: string;
 };
 
-export class GetActiveSpaceInviteCodesUseCase {
+export class GetSpaceInviteCodesUseCase {
 	constructor(
 		@Inject(SPACE_INVITE_CODE_REPOSITORY)
 		private readonly spaceInviteCodeRepository: SpaceInviteCodeRepository,
@@ -20,7 +20,7 @@ export class GetActiveSpaceInviteCodesUseCase {
 
 	async execute(cmd: Cmd): Promise<SpaceInviteCode[]> {
 		return runUseCase(async () => {
-			return this.spaceInviteCodeRepository.findActiveBySpace(cmd.spaceId);
+			return this.spaceInviteCodeRepository.findBySpaceId(cmd.spaceId);
 		});
 	}
 }

@@ -1,5 +1,7 @@
 import { ENV } from 'common/infrastructure/env';
 
+import { ServiceModule } from './service/service.module';
+
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
@@ -25,6 +27,7 @@ import { UsersModule } from 'users/users.module';
 		SpacesModule,
 		CalendarModule,
 		BmstuModule,
+		ServiceModule,
 	],
 })
 export class AppModule {}
