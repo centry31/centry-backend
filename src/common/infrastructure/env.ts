@@ -7,6 +7,7 @@ const EnvSchema = z.object({
 	CLIENT_URL: z.url().default('http://localhost:3000'),
 
 	TG_BOT_TOKEN: z.string(),
+	TG_OIDC_CLIENT_ID: z.string(),
 
 	JWT_SECRET_KEY: z.string(),
 

@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsDate, IsIn } from 'class-validator';
+import { IsBoolean, IsDate, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class DeleteEventQueryDto {
 	@IsIn(['SERIES', 'THIS'])
@@ -8,4 +8,14 @@ export class DeleteEventQueryDto {
 	@Type(() => Date)
 	@IsDate()
 	start: Date;
+
+	@Type(() => Boolean)
+	@IsOptional()
+	@IsBoolean()
+	isNotifyMessage?: boolean;
+
+	@IsOptional()
+	@IsString()
+	@MaxLength(200)
+	notifyMessage?: string;
 }

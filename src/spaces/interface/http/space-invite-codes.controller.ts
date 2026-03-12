@@ -1,13 +1,12 @@
 import { AcceptSpaceInviteCodeUseCase } from '@spaces/application/use-cases/space-invite-code/accept-space-invite-code.use-case';
 import { CreateSpaceInviteCodeUseCase } from '@spaces/application/use-cases/space-invite-code/create-space-invite-code.use-case';
 import { DeleteSpaceInviteCodeUseCase } from '@spaces/application/use-cases/space-invite-code/delete-space-invite-code.use-case';
-import { GetActiveSpaceInviteCodesUseCase } from '@spaces/application/use-cases/space-invite-code/get-active-space-invite-codes.use-case';
 import { GetInfoSpaceInviteCodeUseCase } from '@spaces/application/use-cases/space-invite-code/get-info-space-invite-code.use-case';
+import { GetSpaceInviteCodesUseCase } from 'spaces/application/use-cases/space-invite-code/get-space-invite-codes.use-case';
 
 import { SpaceOwnerAccessGuard } from '../guard/space-owner-access.guard';
 import { toSpaceResponse } from './dto/space/space-response.mapper';
 import { AcceptSpaceInviteCodeDto } from './dto/space-invite-code/accept-space-invite-code.dto';
-import { CreateSpaceInviteCodeDto } from './dto/space-invite-code/create-space-invite-code.dto';
 import { GetInfoSpaceInviteCodeDto } from './dto/space-invite-code/get-info-space-invite-code.dto';
 import { toSpaceInviteCodeResponse } from './dto/space-invite-code/space-invite-code-response.mapper';
 
@@ -23,7 +22,7 @@ export class SpaceInviteCodesController {
 		private readonly acceptSpaceInviteCodeUseCase: AcceptSpaceInviteCodeUseCase,
 		private readonly createSpaceInviteCodeUseCase: CreateSpaceInviteCodeUseCase,
 		private readonly getInfoSpaceInviteCodeUseCase: GetInfoSpaceInviteCodeUseCase,
-		private readonly getActiveSpaceInviteCodesUseCase: GetActiveSpaceInviteCodesUseCase,
+		private readonly getSpaceInviteCodesUseCase: GetSpaceInviteCodesUseCase,
 		private readonly deleteSpaceInviteCodeUseCase: DeleteSpaceInviteCodeUseCase,
 	) {}
 
@@ -42,17 +41,11 @@ export class SpaceInviteCodesController {
 
 	@UseGuards(SpaceOwnerAccessGuard)
 	@Post(':spaceId/create')
-	async create(
-		@Body() createSpaceInviteCodeDto: CreateSpaceInviteCodeDto,
-		@Request() req: AuthenticatedRequest,
-		@Param('spaceId') spaceId: string,
-	) {
+	async create(@Request() req: AuthenticatedRequest, @Param('spaceId') spaceId: string) {
 		const { user } = req;
 		const code = await this.createSpaceInviteCodeUseCase.execute({
 			spaceId,
 			createdByUserId: user.id,
-			expiresAt: createSpaceInviteCodeDto.expiresAt,
-			maxUses: createSpaceInviteCodeDto.maxUses,
 		});
 		const response = toSpaceInviteCodeResponse(code);
 		return formatResponse(response, 'Код создан');
@@ -69,8 +62,8 @@ export class SpaceInviteCodesController {
 
 	@UseGuards(SpaceOwnerAccessGuard)
 	@Get(':spaceId')
-	async getManyActive(@Param('spaceId') spaceId: string) {
-		const codes = await this.getActiveSpaceInviteCodesUseCase.execute({ spaceId });
+	async getAll(@Param('spaceId') spaceId: string) {
+		const codes = await this.getSpaceInviteCodesUseCase.execute({ spaceId });
 		const response = codes.map((code) => toSpaceInviteCodeResponse(code));
 		return formatResponse(response, 'Активные коды успешно получены');
 	}

@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
 	ArrayMaxSize,
 	IsArray,
+	IsBoolean,
 	IsDate,
 	IsIn,
 	IsInt,
@@ -68,4 +69,13 @@ export class UpdateEventDto {
 	@Type(() => UpdateEventReminderDto)
 	@ArrayMaxSize(5)
 	reminders?: UpdateEventReminderDto[];
+
+	@IsOptional()
+	@IsBoolean()
+	isNotifyMessage?: boolean;
+
+	@IsOptional()
+	@IsString()
+	@MaxLength(200)
+	notifyMessage?: string;
 }

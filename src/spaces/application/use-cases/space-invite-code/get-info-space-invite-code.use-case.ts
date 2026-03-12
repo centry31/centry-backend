@@ -22,6 +22,7 @@ export class GetInfoSpaceInviteCodeUseCase {
 	constructor(
 		@Inject(SPACE_INVITE_CODE_REPOSITORY)
 		private readonly spaceInviteCodeRepository: SpaceInviteCodeRepository,
+
 		@Inject(SPACE_REPOSITORY)
 		private readonly spaceRepository: SpaceRepository,
 	) {}
@@ -31,9 +32,6 @@ export class GetInfoSpaceInviteCodeUseCase {
 			const foundCode = await this.spaceInviteCodeRepository.findOneByCode(cmd.code);
 			if (!foundCode) {
 				throw new InviteCodeNotFoundError();
-			}
-			if (!foundCode.canBeUsed()) {
-				throw new InviteCodeInvalidError();
 			}
 
 			const space = await this.spaceRepository.findById(foundCode.spaceId);

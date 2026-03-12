@@ -4,9 +4,11 @@ import type { TelegramId as TgId } from 'common/domain/value-objects/telegram-id
 type UserProps = {
 	id: string;
 	tgId: TgId;
-	displayName: string;
-	username?: string;
 	chatId?: TgId;
+
+	username?: string;
+	displayName: string;
+	isOnboardingCompleted: boolean;
 };
 
 export class User {
@@ -16,10 +18,13 @@ export class User {
 	private _displayName: string;
 	private _username?: string;
 	private _chatId?: TgId;
+	private _isOnboardingCompleted: boolean;
 
 	constructor(props: UserProps) {
 		this.id = props.id;
 		this.tgId = props.tgId;
+		this._isOnboardingCompleted = props.isOnboardingCompleted;
+
 		this.changeDisplayName(props.displayName);
 		this.changeUsername(props.username);
 		this.changeChatId(props.chatId);
@@ -35,6 +40,10 @@ export class User {
 
 	get chatId(): TgId | undefined {
 		return this._chatId;
+	}
+
+	get isOnboardingCompleted(): boolean {
+		return this._isOnboardingCompleted;
 	}
 
 	changeDisplayName(displayName: string): void {
@@ -53,5 +62,9 @@ export class User {
 
 	changeChatId(chatId?: TgId): void {
 		this._chatId = chatId;
+	}
+
+	changeIsOnboardingCompleted(isOnboardingCompleted: boolean): void {
+		this._isOnboardingCompleted = isOnboardingCompleted;
 	}
 }

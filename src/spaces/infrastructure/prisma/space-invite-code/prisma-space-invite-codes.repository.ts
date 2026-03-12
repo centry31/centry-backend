@@ -2,7 +2,7 @@ import type { SpaceInviteCode } from '@spaces/domain/space-invite-code.entity';
 
 import type { SpaceInviteCodeRepository } from '@spaces/application/ports/space-invite-code/space-invite-code.repository';
 
-import { toDomain, toPersistence } from './mappers';
+import { toCreatePersistence, toDomain, toPersistence } from './mappers';
 
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'prisma.service';
@@ -12,7 +12,7 @@ export class PrismaSpaceInviteCodesRepository implements SpaceInviteCodeReposito
 	constructor(private readonly prisma: PrismaService) {}
 
 	async create(invite: SpaceInviteCode): Promise<SpaceInviteCode> {
-		const data = toPersistence(invite);
+		const data = toCreatePersistence(invite);
 		const row = await this.prisma.spaceInviteCode.create({ data });
 		return toDomain(row);
 	}
@@ -34,9 +34,9 @@ export class PrismaSpaceInviteCodesRepository implements SpaceInviteCodeReposito
 		return row ? toDomain(row) : null;
 	}
 
-	async findActiveBySpace(spaceId: string): Promise<SpaceInviteCode[]> {
+	async findBySpaceId(spaceId: string): Promise<SpaceInviteCode[]> {
 		const rows = await this.prisma.spaceInviteCode.findMany({
-			where: { spaceId, usedAt: null, expiresAt: { gt: new Date() } },
+			where: { spaceId },
 		});
 
 		if (!rows.length) return [];

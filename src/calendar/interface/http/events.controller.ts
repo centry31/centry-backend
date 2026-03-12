@@ -81,14 +81,18 @@ export class EventsController {
 		const event = await this.createEventUseCase.execute({
 			title: createEventDto.title,
 			description: createEventDto.description ?? null,
+
 			start: createEventDto.start,
 			duration: createEventDto.duration,
 			timeZone: createEventDto.timeZone,
+
+			spaceId,
 			createdById: user.id,
+
 			frequency: createEventDto.frequency,
 			until: createEventDto.until,
-			spaceId,
 			reminders: createEventDto.reminders ?? [],
+
 			isNotifyMessage: createEventDto.isNotifyMessage,
 			notifyMessage: createEventDto.notifyMessage,
 		});
@@ -106,16 +110,22 @@ export class EventsController {
 		await this.updateEventUseCase.execute({
 			id: eventId,
 			spaceId,
+
 			title: updateEventDto.title,
 			description: updateEventDto.description,
+
 			newStart: updateEventDto.newStart,
 			oldStart: updateEventDto.oldStart,
 			duration: updateEventDto.duration,
 			timeZone: updateEventDto.timeZone,
 			frequency: updateEventDto.frequency,
 			until: updateEventDto.until,
+
 			reminders: updateEventDto.reminders ?? [],
 			scope: updateEventDto.scope,
+
+			isNotifyMessage: updateEventDto.isNotifyMessage,
+			notifyMessage: updateEventDto.notifyMessage,
 		});
 		return formatResponse(null, 'Событие обновлено');
 	}
@@ -130,8 +140,12 @@ export class EventsController {
 		await this.deleteEventUseCase.execute({
 			eventId,
 			spaceId,
+
 			scope: query.scope,
 			start: query.start,
+
+			isNotifyMessage: query.isNotifyMessage,
+			notifyMessage: query.notifyMessage,
 		});
 		return formatResponse(null, 'Событие удалено');
 	}
